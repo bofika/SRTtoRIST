@@ -31,7 +31,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/srt_to_rist_gateway $(1)/usr/bin/
 
-	$(INSTALL_DIR) $(1)/etc/srt_to_rist
+	$(INSTALL_DIR) $(1)/etc/srt_to_rist_gateway
 	$(INSTALL_CONF) $(PKG_BUILD_DIR)/config.json $(1)/etc/srt_to_rist_gateway/
 endef
 
