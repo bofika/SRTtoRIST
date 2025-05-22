@@ -24,10 +24,11 @@ jobs:
           tar -xf openwrt-sdk-23.05.3-mediatek-filogic_*.tar.xz
           mv openwrt-sdk-*/ openwrt-sdk
 
-      - name: Copy package into SDK
-        run: |
-          mkdir -p openwrt-sdk/package/srt-to-rist-gateway
-          cp -r ./* openwrt-sdk/package/srt-to-rist-gateway/
+- name: Copy package files only
+  run: |
+    mkdir -p openwrt-sdk/package/srt-to-rist-gateway
+    rsync -av --exclude=openwrt-sdk --exclude=.git --exclude=.github ./ openwrt-sdk/package/srt-to-rist-gateway/
+
 
       - name: Build package
         run: |
