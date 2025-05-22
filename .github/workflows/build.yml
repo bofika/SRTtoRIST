@@ -13,7 +13,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Set up dependencies
+      - name: Set up build dependencies
         run: |
           sudo apt update
           sudo apt install -y build-essential libncurses5-dev libncursesw5-dev zlib1g-dev gawk git gettext libssl-dev xsltproc wget unzip python3
@@ -35,9 +35,8 @@ jobs:
           make defconfig
           make package/srt-to-rist-gateway/compile V=s
 
-    - name: Upload compiled .ipk
+      - name: Upload compiled .ipk
         uses: actions/upload-artifact@v4
         with:
-        name: srt-to-rist-gateway-ipk
-        path: openwrt-sdk/bin/packages/*/*/srt-to-rist-gateway_*.ipk
-
+          name: srt-to-rist-gateway-ipk
+          path: openwrt-sdk/bin/packages/*/*/srt-to-rist-gateway_*.ipk
