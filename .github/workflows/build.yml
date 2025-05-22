@@ -16,13 +16,22 @@ jobs:
       - name: Set up build dependencies
         run: |
           sudo apt update
-          sudo apt install -y build-essential libncurses5-dev libncursesw5-dev zlib1g-dev gawk git gettext libssl-dev xsltproc wget unzip python3 rsync
+          sudo apt install -y build-essential libncurses5-dev libncursesw5-dev zlib1g-dev gawk git gettext libssl-dev xsltproc wget unzip python3 rsync cmake pkg-config
 
       - name: Download OpenWRT SDK (mediatek/filogic)
         run: |
           wget https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic/openwrt-sdk-23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64.tar.xz
           tar -xf openwrt-sdk-23.05.3-mediatek-filogic_*.tar.xz
           mv openwrt-sdk-*/ openwrt-sdk
+
+      - name: Install OpenWRT feed packages
+        run: |
+          cd openwrt-sdk
+          echo "src-git packages https://git.openwrt.org/feed/packages.git^38cb0129b8d370c4d2c6e0e0f0bcc6d4d2ef56f5" > feeds.conf
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          make defconfig
+          make package/symlinks
 
       - name: Copy package files only
         run: |
