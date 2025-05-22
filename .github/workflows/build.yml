@@ -1,0 +1,42 @@
+name: Build OpenWRT IPK for GL-MT3000
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-ipk:
+    runs-on: ubuntu-latest
+    name: Build srt-to-rist-gateway
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential libncurses5-dev libncursesw5-dev zlib1g-dev gawk git gettext libssl-dev xsltproc wget unzip python3
+
+      - name: Download OpenWRT SDK (mediatek/filogic)
+        run: |
+          wget https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic/openwrt-sdk-23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+          tar -xf openwrt-sdk-23.05.3-mediatek-filogic_*.tar.xz
+          mv openwrt-sdk-*/ openwrt-sdk
+
+      - name: Copy package into SDK
+        run: |
+          mkdir -p openwrt-sdk/package/srt-to-rist-gateway
+          cp -r ./* openwrt-sdk/package/srt-to-rist-gateway/
+
+      - name: Build package
+        run: |
+          cd openwrt-sdk
+          make defconfig
+          make package/srt-to-rist-gateway/compile V=s
+
+      - name: Upload compiled .ipk
+        uses: actions/upload-artifact@v3
+        with:
+          name: srt-to-rist-gateway-ipk
+          path: openwrt-sdk/bin/packages/*/*/srt-to-rist-gateway_*.ipk
