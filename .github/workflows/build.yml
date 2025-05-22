@@ -31,12 +31,17 @@ jobs:
           rsync -av CMakeLists.txt Makefile config.json README.md openwrt-sdk/package/srt-to-rist-gateway/
           if [ -d "init.d" ]; then rsync -av init.d openwrt-sdk/package/srt-to-rist-gateway/; fi
 
-      - name: Debug CMake and Makefile before compile
+      - name: Debug build folder contents
         run: |
-          echo "=== CMakeLists.txt ==="
+          echo "CMakeLists.txt content:"
           cat openwrt-sdk/package/srt-to-rist-gateway/CMakeLists.txt
-          echo "=== Makefile ==="
+          echo "Makefile content:"
           cat openwrt-sdk/package/srt-to-rist-gateway/Makefile
+
+      - name: 🧼 Clean stale build cache
+        run: |
+          rm -rf openwrt-sdk/build_dir/target-*
+          rm -rf openwrt-sdk/staging_dir/target-*
 
       - name: Build package
         run: |
