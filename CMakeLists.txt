@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(stream_relay)
+project(srt_to_rist_gateway)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 14)
@@ -49,10 +49,10 @@ set(SOURCES
 )
 
 # Create executable
-add_executable(stream_relay ${SOURCES})
+add_executable(srt_to_rist_gateway ${SOURCES})
 
 # Link libraries
-target_link_libraries(stream_relay
+target_link_libraries(srt_to_rist_gateway
     ${LIBRIST_LIBRARIES}
     ${SRT_LIBRARIES}
     ${AVFORMAT_LIBRARIES}
@@ -62,5 +62,5 @@ target_link_libraries(stream_relay
 )
 
 # Installation
-install(TARGETS stream_relay DESTINATION bin)
-install(FILES config.json DESTINATION etc/stream_relay)
+install(TARGETS srt_to_rist_gateway DESTINATION bin)
+install(FILES config.json DESTINATION etc/srt_to_rist_gateway)
