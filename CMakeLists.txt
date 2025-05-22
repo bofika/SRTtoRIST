@@ -1,14 +1,14 @@
 cmake_minimum_required(VERSION 3.10)
 project(srt_to_rist_gateway)
 
-include(FindPkgConfig)
+# Required to enable pkg_check_modules
+find_package(PkgConfig REQUIRED)
 
 # Set C++ standard
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find required packages
-find_package(PkgConfig REQUIRED)
+# Find required libraries
 pkg_check_modules(LIBRIST REQUIRED librist)
 pkg_check_modules(SRT REQUIRED srt)
 pkg_check_modules(AVFORMAT REQUIRED libavformat)
@@ -24,15 +24,12 @@ include_directories(
     ${AVUTIL_INCLUDE_DIRS}
 )
 
-# Add nlohmann json header (header-only library)
+# Add nlohmann json header-only library
 include_directories(${CMAKE_SOURCE_DIR}/third_party)
 
-# Create directory for third-party libraries
-file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/third_party)
-
 # Download nlohmann/json if not present
-if(NOT EXISTS ${CMAKE_SOURCE_DIR}/third_party/nlohmann)
-    file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/nlohmann)
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/nlohmann)
+if(NOT EXISTS ${CMAKE_SOURCE_DIR}/third_party/nlohmann/json.hpp)
     file(DOWNLOAD
         https://github.com/nlohmann/json/releases/download/v3.11.2/json.hpp
         ${CMAKE_SOURCE_DIR}/third_party/nlohmann/json.hpp
