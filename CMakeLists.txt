@@ -1,0 +1,66 @@
+cmake_minimum_required(VERSION 3.10)
+project(stream_relay)
+
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Find required packages
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBRIST REQUIRED librist)
+pkg_check_modules(SRT REQUIRED srt)
+pkg_check_modules(AVFORMAT REQUIRED libavformat)
+pkg_check_modules(AVCODEC REQUIRED libavcodec)
+pkg_check_modules(AVUTIL REQUIRED libavutil)
+
+# Add include directories
+include_directories(
+    ${LIBRIST_INCLUDE_DIRS}
+    ${SRT_INCLUDE_DIRS}
+    ${AVFORMAT_INCLUDE_DIRS}
+    ${AVCODEC_INCLUDE_DIRS}
+    ${AVUTIL_INCLUDE_DIRS}
+)
+
+# Add nlohmann json header (header-only library)
+include_directories(${CMAKE_SOURCE_DIR}/third_party)
+
+# Create directory for third-party libraries
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/third_party)
+
+# Download nlohmann/json if not present
+if(NOT EXISTS ${CMAKE_SOURCE_DIR}/third_party/nlohmann)
+    file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/nlohmann)
+    file(DOWNLOAD
+        https://github.com/nlohmann/json/releases/download/v3.11.2/json.hpp
+        ${CMAKE_SOURCE_DIR}/third_party/nlohmann/json.hpp
+        SHOW_PROGRESS
+    )
+endif()
+
+# Source files
+set(SOURCES
+    src/main.cpp
+    src/srt_input.cpp
+    src/rtsp_input.cpp
+    src/rist_output.cpp
+    src/feedback.cpp
+    src/network_utils.cpp
+)
+
+# Create executable
+add_executable(stream_relay ${SOURCES})
+
+# Link libraries
+target_link_libraries(stream_relay
+    ${LIBRIST_LIBRARIES}
+    ${SRT_LIBRARIES}
+    ${AVFORMAT_LIBRARIES}
+    ${AVCODEC_LIBRARIES}
+    ${AVUTIL_LIBRARIES}
+    pthread
+)
+
+# Installation
+install(TARGETS stream_relay DESTINATION bin)
+install(FILES config.json DESTINATION etc/stream_relay)
