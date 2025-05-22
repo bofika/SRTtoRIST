@@ -13,7 +13,6 @@ RUN wget https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic
     tar -xf openwrt-sdk-23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64.tar.xz && \
     mv openwrt-sdk-23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64 openwrt-sdk
 
-
 WORKDIR /workspace
 
 # 3) Copy your package into the SDK
