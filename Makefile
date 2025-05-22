@@ -27,12 +27,18 @@ define Build/Prepare
 	$(CP) ./config.json $(PKG_BUILD_DIR)/
 endef
 
+# ✅ Ensures the compiled binary is placed in $(PKG_INSTALL_DIR)
+define Build/Compile
+	$(MAKE) -C $(PKG_BUILD_DIR) install DESTDIR=$(PKG_INSTALL_DIR)
+endef
+
+# ✅ Installs binary and config from $(PKG_INSTALL_DIR)
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/srt_to_rist_gateway $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/srt_to_rist_gateway $(1)/usr/bin/
 
 	$(INSTALL_DIR) $(1)/etc/srt_to_rist_gateway
-	$(INSTALL_CONF) $(PKG_BUILD_DIR)/config.json $(1)/etc/srt_to_rist_gateway/
+	$(INSTALL_CONF) $(PKG_INSTALL_DIR)/etc/srt_to_rist_gateway/config.json $(1)/etc/srt_to_rist_gateway/
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
