@@ -4,7 +4,8 @@ FROM ubuntu:22.04
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     build-essential ca-certificates wget git pkg-config cmake \
     libncurses5-dev libncursesw5-dev zlib1g-dev \
-    gawk gettext libssl-dev xsltproc rsync file
+    gawk gettext libssl-dev xsltproc rsync file \
+    unzip python3 python3-distutils
 
 # 2) Create and switch to /workspace
 WORKDIR /workspace
