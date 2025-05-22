@@ -1,58 +1,38 @@
 include $(TOPDIR)/rules.mk
 
-# Name and version
 PKG_NAME:=srt-to-rist-gateway
 PKG_VERSION:=1.0.0
 PKG_RELEASE:=1
 
-# Package source
-PKG_SOURCE_PROTO:=git
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://github.com/bofika/SRTtoRIST.git
-PKG_SOURCE_VERSION:=HEAD
+PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
 
-# Maintainer and license info
-PKG_MAINTAINER:=Your Name <your.email@example.com>
-PKG_LICENSE:=MIT
-
-# Dependencies
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
-# Package definition
-define Package/stream_relay
+define Package/$(PKG_NAME)
   SECTION:=net
   CATEGORY:=Network
-  TITLE:=Stream Relay for SRT/RTSP to RIST
-  URL:=https://github.com/bofika/SRTtoRIST.git
+  TITLE:=SRT to RIST gateway
   DEPENDS:=+librist +libsrt +libavformat +libavcodec +libavutil +libstdcpp
 endef
 
-# Package description
-define Package/stream_relay/description
-  A lightweight application for OpenWRT that receives video via SRT or RTSP,
-  sends the stream over RIST using libRIST, and provides network feedback
-  to the encoder via UDP.
+define Package/$(PKG_NAME)/description
+  A gateway that receives SRT or RTSP video and sends it via RIST.
 endef
 
-# Package preparation
 define Build/Prepare
-	$(call Build/Prepare/Default)
-	$(INSTALL_DIR) $(PKG_BUILD_DIR)/third_party/nlohmann
-	$(DOWNLOAD) https://github.com/nlohmann/json/releases/download/v3.11.2/json.hpp \
-		$(PKG_BUILD_DIR)/third_party/nlohmann/json.hpp
+	mkdir -p $(PKG_BUILD_DIR)
+	$(CP) ./src/* $(PKG_BUILD_DIR)/
+	$(CP) ./CMakeLists.txt $(PKG_BUILD_DIR)/
+	$(CP) ./config.json $(PKG_BUILD_DIR)/
 endef
 
-# Package installation
-define Package/stream_relay/install
+define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/stream_relay $(1)/usr/bin/
-	
-	$(INSTALL_DIR) $(1)/etc/stream_relay
-	$(INSTALL_CONF) $(PKG_BUILD_DIR)/config.json $(1)/etc/stream_relay/
-	
-	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/init.d/stream_relay $(1)/etc/init.d/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/srt_to_rist_gateway $(1)/usr/bin/
+
+	$(INSTALL_DIR) $(1)/etc/srt_to_rist
+	$(INSTALL_CONF) $(PKG_BUILD_DIR)/config.json $(1)/etc/srt_to_rist/
 endef
 
-$(eval $(call BuildPackage,srt-to-rist-gateway))
+$(eval $(call BuildPackage,$(PKG_NAME)))
