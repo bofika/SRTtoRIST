@@ -13,8 +13,7 @@ define Package/$(PKG_NAME)
   SECTION:=net
   CATEGORY:=Network
   TITLE:=SRT to RIST gateway
-  DEPENDS:=+librist +libsrt +libavformat +libavcodec +libavutil +libstdcpp
-  PKG_CONFIG_DEPENDS:=CONFIG_PACKAGE_librist CONFIG_PACKAGE_libsrt CONFIG_PACKAGE_libavformat
+  DEPENDS:=+libsrt +libavformat +libavcodec +libavutil +libstdcpp
 endef
 
 define Package/$(PKG_NAME)/description
@@ -27,13 +26,6 @@ define Build/Prepare
 	$(CP) ./CMakeLists.txt $(PKG_BUILD_DIR)/
 	$(CP) ./config.json $(PKG_BUILD_DIR)/
 endef
-
-TARGET_CFLAGS += -I$(STAGING_DIR)/usr/include
-TARGET_LDFLAGS += -L$(STAGING_DIR)/usr/lib
-
-CMAKE_OPTIONS += \
-	-DCMAKE_BUILD_TYPE=Release \
-	-DCMAKE_PREFIX_PATH=$(STAGING_DIR)/usr
 
 define Build/Compile
 	$(MAKE) -C $(PKG_BUILD_DIR) install DESTDIR=$(PKG_INSTALL_DIR)
