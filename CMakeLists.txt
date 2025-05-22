@@ -6,17 +6,27 @@ find_package(PkgConfig REQUIRED)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Optional dependency
-pkg_check_modules(LIBRIST librist)
+# Only check for librist — do not require
+pkg_check_modules(LIBRIST QUIET librist)
 pkg_check_modules(SRT REQUIRED srt)
 pkg_check_modules(AVFORMAT REQUIRED libavformat)
 pkg_check_modules(AVCODEC REQUIRED libavcodec)
 pkg_check_modules(AVUTIL REQUIRED libavutil)
 
-# Header-only JSON
-include_directories(${CMAKE_SOURCE_DIR}/third_party)
+include_directories(
+    ${SRT_INCLUDE_DIRS}
+    ${AVFORMAT_INCLUDE_DIRS}
+    ${AVCODEC_INCLUDE_DIRS}
+    ${AVUTIL_INCLUDE_DIRS}
+)
 
-# Fetch json.hpp if missing
+if(LIBRIST_FOUND)
+    message(STATUS "librist found, linking it.")
+    include_directories(${LIBRIST_INCLUDE_DIRS})
+endif()
+
+# nlohmann json support
+include_directories(${CMAKE_SOURCE_DIR}/third_party)
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/nlohmann)
 if(NOT EXISTS ${CMAKE_SOURCE_DIR}/third_party/nlohmann/json.hpp)
     file(DOWNLOAD
@@ -26,7 +36,6 @@ if(NOT EXISTS ${CMAKE_SOURCE_DIR}/third_party/nlohmann/json.hpp)
     )
 endif()
 
-# Sources
 set(SOURCES
     src/main.cpp
     src/srt_input.cpp
@@ -38,7 +47,6 @@ set(SOURCES
 
 add_executable(srt_to_rist_gateway ${SOURCES})
 
-# Link libraries
 target_link_libraries(srt_to_rist_gateway
     ${SRT_LIBRARIES}
     ${AVFORMAT_LIBRARIES}
@@ -48,13 +56,8 @@ target_link_libraries(srt_to_rist_gateway
 )
 
 if(LIBRIST_FOUND)
-    message(STATUS "librist found, linking with it.")
-    include_directories(${LIBRIST_INCLUDE_DIRS})
     target_link_libraries(srt_to_rist_gateway ${LIBRIST_LIBRARIES})
-else()
-    message(WARNING "librist not found, continuing without RIST support.")
 endif()
 
-# Install
 install(TARGETS srt_to_rist_gateway DESTINATION bin)
 install(FILES config.json DESTINATION etc/srt_to_rist_gateway)
