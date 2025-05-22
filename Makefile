@@ -1,14 +1,14 @@
 include $(TOPDIR)/rules.mk
 
 # Name and version
-PKG_NAME:=stream_relay
+PKG_NAME:=srt-to-rist-gateway
 PKG_VERSION:=1.0.0
 PKG_RELEASE:=1
 
 # Package source
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://github.com/user/stream_relay.git
+PKG_SOURCE_URL:=https://github.com/bofika/SRTtoRIST.git
 PKG_SOURCE_VERSION:=HEAD
 
 # Maintainer and license info
@@ -24,7 +24,7 @@ define Package/stream_relay
   SECTION:=net
   CATEGORY:=Network
   TITLE:=Stream Relay for SRT/RTSP to RIST
-  URL:=https://github.com/user/stream_relay
+  URL:=https://github.com/bofika/SRTtoRIST.git
   DEPENDS:=+librist +libsrt +libavformat +libavcodec +libavutil +libstdcpp
 endef
 
@@ -55,4 +55,4 @@ define Package/stream_relay/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/init.d/stream_relay $(1)/etc/init.d/
 endef
 
-$(eval $(call BuildPackage,stream_relay))
+$(eval $(call BuildPackage,srt-to-rist-gateway))
