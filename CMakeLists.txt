@@ -1,33 +1,22 @@
 cmake_minimum_required(VERSION 3.10)
 project(srt_to_rist_gateway)
 
-# Required to enable pkg_check_modules
 find_package(PkgConfig REQUIRED)
 
-# Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find required libraries
-pkg_check_modules(LIBRIST REQUIRED librist)
+# Optional dependency
+pkg_check_modules(LIBRIST librist)
 pkg_check_modules(SRT REQUIRED srt)
 pkg_check_modules(AVFORMAT REQUIRED libavformat)
 pkg_check_modules(AVCODEC REQUIRED libavcodec)
 pkg_check_modules(AVUTIL REQUIRED libavutil)
 
-# Add include directories
-include_directories(
-    ${LIBRIST_INCLUDE_DIRS}
-    ${SRT_INCLUDE_DIRS}
-    ${AVFORMAT_INCLUDE_DIRS}
-    ${AVCODEC_INCLUDE_DIRS}
-    ${AVUTIL_INCLUDE_DIRS}
-)
-
-# Add nlohmann json header-only library
+# Header-only JSON
 include_directories(${CMAKE_SOURCE_DIR}/third_party)
 
-# Download nlohmann/json if not present
+# Fetch json.hpp if missing
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/nlohmann)
 if(NOT EXISTS ${CMAKE_SOURCE_DIR}/third_party/nlohmann/json.hpp)
     file(DOWNLOAD
@@ -37,7 +26,7 @@ if(NOT EXISTS ${CMAKE_SOURCE_DIR}/third_party/nlohmann/json.hpp)
     )
 endif()
 
-# Source files
+# Sources
 set(SOURCES
     src/main.cpp
     src/srt_input.cpp
@@ -47,12 +36,10 @@ set(SOURCES
     src/network_utils.cpp
 )
 
-# Create executable
 add_executable(srt_to_rist_gateway ${SOURCES})
 
 # Link libraries
 target_link_libraries(srt_to_rist_gateway
-    ${LIBRIST_LIBRARIES}
     ${SRT_LIBRARIES}
     ${AVFORMAT_LIBRARIES}
     ${AVCODEC_LIBRARIES}
@@ -60,6 +47,14 @@ target_link_libraries(srt_to_rist_gateway
     pthread
 )
 
-# Installation
+if(LIBRIST_FOUND)
+    message(STATUS "librist found, linking with it.")
+    include_directories(${LIBRIST_INCLUDE_DIRS})
+    target_link_libraries(srt_to_rist_gateway ${LIBRIST_LIBRARIES})
+else()
+    message(WARNING "librist not found, continuing without RIST support.")
+endif()
+
+# Install
 install(TARGETS srt_to_rist_gateway DESTINATION bin)
 install(FILES config.json DESTINATION etc/srt_to_rist_gateway)
