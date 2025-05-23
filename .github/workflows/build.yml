@@ -43,7 +43,8 @@ jobs:
           sudo apt update
           sudo apt install -y build-essential libncurses5-dev zlib1g-dev gawk git gettext \
             libssl-dev xsltproc wget unzip python3 rsync file pkg-config cmake \
-            libtool automake autoconf bison flex texinfo help2man ccache
+            libtool automake autoconf bison flex texinfo help2man ccache \
+            libavcodec-dev libavutil-dev libavformat-dev
 
       - name: Download OpenWRT SDK
         if: steps.cache.outputs.cache-hit != 'true'
@@ -57,11 +58,11 @@ jobs:
         run: |
           mkdir -p openwrt-sdk/package/{libs,multimedia}
           
-          # Clone main packages repo
-          git clone --depth=1 https://github.com/openwrt/packages.git openwrt-packages
+          # Clone main packages repo with specific branch
+          git clone --depth=1 --branch openwrt-23.05 https://github.com/openwrt/packages.git openwrt-packages
           
           # Clone OpenWRT core for OpenSSL
-          git clone --depth=1 https://github.com/openwrt/openwrt.git openwrt-core
+          git clone --depth=1 --branch openwrt-23.05 https://github.com/openwrt/openwrt.git openwrt-core
           cp -r openwrt-core/package/libs/openssl openwrt-sdk/package/libs/libopenssl
           
           # Copy FFmpeg from packages
@@ -81,13 +82,16 @@ jobs:
           # Clean existing feeds
           rm -rf feeds tmp
           # Update feeds.conf with stable branches
-          echo "src-git packages https://github.com/openwrt/packages.git;openwrt-23.05" > feeds.conf
-          echo "src-git luci https://github.com/openwrt/luci.git;openwrt-23.05" >> feeds.conf
+          cat > feeds.conf <<EOF
+          src-git packages https://github.com/openwrt/packages.git;openwrt-23.05
+          src-git luci https://github.com/openwrt/luci.git;openwrt-23.05
+          src-git multimedia https://github.com/openwrt/packages.git;openwrt-23.05
+          EOF
           # Update and install feeds
+          export TERM=xterm
           ./scripts/feeds update -a
           ./scripts/feeds clean
-          ./scripts/feeds install -a -f -p packages
-          ./scripts/feeds install -a -f -p luci
+          ./scripts/feeds install -a -f
 
       - name: Prepare package directory
         run: |
@@ -106,35 +110,12 @@ jobs:
       - name: Configure build
         run: |
           cd openwrt-sdk
+          export TERM=xterm
           
-          # Create minimal config with required kernel modules
+          # Create minimal config with required packages
           cat > .config <<EOF
           CONFIG_TARGET_mediatek_filogic=y
           CONFIG_TARGET_mediatek_filogic_DEVICE_glinet_gl-mt3000=y
-          
-          # Required kernel modules
-          CONFIG_KERNEL_MIPS_FPU_EMULATOR=y
-          CONFIG_KERNEL_MIPS_KERNEL_FPU=y
-          CONFIG_KERNEL_KALLSYMS=y
-          CONFIG_KERNEL_DEBUG_INFO=y
-          CONFIG_KERNEL_DEBUG_INFO_REDUCED=n
-          CONFIG_KERNEL_DEBUG_INFO_BTF=n
-          CONFIG_KERNEL_AIO=y
-          CONFIG_KERNEL_IO_URING=y
-          CONFIG_KERNEL_FHANDLE=y
-          CONFIG_KERNEL_FANOTIFY=y
-          CONFIG_KERNEL_MAGIC_SYSRQ=y
-          CONFIG_KERNEL_COREDUMP=y
-          CONFIG_KERNEL_ELF_CORE=y
-          CONFIG_KERNEL_PRINTK_TIME=y
-          CONFIG_KERNEL_KEXEC=y
-          CONFIG_KERNEL_PROC_VMCORE=y
-          CONFIG_KERNEL_PROC_KCORE=y
-          CONFIG_KERNEL_CRASH_DUMP=y
-          CONFIG_KERNEL_KEYS=y
-          CONFIG_KERNEL_CGROUPS=y
-          CONFIG_KERNEL_FAIR_GROUP_SCHED=y
-          CONFIG_KERNEL_PROC_PID_CPUSET=y
           
           # Required packages
           CONFIG_PACKAGE_librist=m
@@ -143,20 +124,18 @@ jobs:
           CONFIG_PACKAGE_libavcodec=m
           CONFIG_PACKAGE_libavutil=m
           CONFIG_PACKAGE_libopenssl=m
+          CONFIG_PACKAGE_libpthread=m
           CONFIG_PACKAGE_srt-to-rist-gateway=m
           
-          # Additional dependencies
-          CONFIG_PACKAGE_kmod-crypto-hash=y
-          CONFIG_PACKAGE_kmod-crypto-crc32c=y
-          CONFIG_PACKAGE_kmod-lib-crc32c=y
-          CONFIG_PACKAGE_kmod-lib-raid6=y
-          CONFIG_PACKAGE_kmod-lib-xor=y
-          CONFIG_PACKAGE_kmod-md-mod=y
-          CONFIG_PACKAGE_kmod-md-linear=y
-          CONFIG_PACKAGE_kmod-md-raid0=y
-          CONFIG_PACKAGE_kmod-md-raid1=y
-          CONFIG_PACKAGE_kmod-md-raid10=y
-          CONFIG_PACKAGE_kmod-md-raid456=y
+          # FFmpeg configuration
+          CONFIG_FFMPEG_CUSTOM_ENCODERS=y
+          CONFIG_FFMPEG_CUSTOM_DECODERS=y
+          CONFIG_FFMPEG_CUSTOM_MUXERS=y
+          CONFIG_FFMPEG_CUSTOM_DEMUXERS=y
+          CONFIG_FFMPEG_CUSTOM_PARSERS=y
+          CONFIG_FFMPEG_CUSTOM_PROTOCOLS=y
+          CONFIG_FFMPEG_CUSTOM_FILTERS=y
+          CONFIG_FFMPEG_CUSTOM_DEVICES=y
           
           # OpenSSL configuration
           CONFIG_OPENSSL_ENGINE=y
@@ -165,43 +144,25 @@ jobs:
           CONFIG_OPENSSL_WITH_DEPRECATED=y
           CONFIG_OPENSSL_WITH_ERROR_MESSAGES=y
           
-          # Disable all problematic packages
-          CONFIG_PACKAGE_libopenssl-conf=n
-          CONFIG_PACKAGE_libopenssl-legacy=n
-          CONFIG_PACKAGE_libopenssl-padlock=n
-          CONFIG_PACKAGE_openssl-util=n
-          CONFIG_PACKAGE_wpa-supplicant-mesh-openssl=n
-          CONFIG_PACKAGE_wpa-supplicant-openssl=n
-          CONFIG_PACKAGE_eapol-test-openssl=n
-          CONFIG_PACKAGE_gnunet-utils=n
-          CONFIG_PACKAGE_checksec=n
-          CONFIG_PACKAGE_luci-ssl-nginx=n
-          CONFIG_PACKAGE_hostapd-openssl=n
-          CONFIG_PACKAGE_wpad-mesh-openssl=n
-          CONFIG_PACKAGE_wpad-openssl=n
-          CONFIG_PACKAGE_nginx-ssl=n
-          CONFIG_PACKAGE_nginx-ssl-util=n
-          CONFIG_PACKAGE_nginx-mod-luci-ssl=n
-          CONFIG_PACKAGE_luci-app-nginx=n
-          CONFIG_PACKAGE_luci-ssl=n
-          CONFIG_PACKAGE_luci-mod-admin-full=n
-          CONFIG_PACKAGE_luci-theme-bootstrap=n
-          CONFIG_PACKAGE_luci-theme-material=n
-          CONFIG_PACKAGE_luci-theme-openwrt=n
-          CONFIG_PACKAGE_wpad-basic-openssl=n
-          
-          # Disable all SSL variants
-          CONFIG_PACKAGE_libustream-openssl=n
-          CONFIG_PACKAGE_libustream-wolfssl=n
-          CONFIG_PACKAGE_libustream-mbedtls=n
+          # Build options
+          CONFIG_BINARY_FOLDER=y
+          CONFIG_DOWNLOAD_FOLDER=y
+          CONFIG_LOCALMIRROR=""
+          CONFIG_AUTOREBUILD=y
+          CONFIG_BUILD_LOG=y
+          CONFIG_CCACHE=y
           EOF
           
           # Generate full config
           make defconfig
+          
+          # Show final config
+          make -j1 V=s config-dump
 
       - name: Build tools and toolchain
         run: |
           cd openwrt-sdk
+          export TERM=xterm
           # Build tools with verbose output and single thread
           make tools/install -j1 V=s || {
             echo "Tools build failed. Checking logs..."
@@ -218,6 +179,7 @@ jobs:
       - name: Build package
         run: |
           cd openwrt-sdk
+          export TERM=xterm
           make package/srt-to-rist-gateway/compile V=s || {
             echo "Build failed with error code $?"
             echo "Checking build logs..."
