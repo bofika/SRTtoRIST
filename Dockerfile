@@ -28,6 +28,7 @@ WORKDIR /workspace/openwrt-sdk
 RUN echo 'src-git librist https://github.com/nanake/librist.git' >> feeds.conf.default && \
     echo 'src-git srt https://github.com/Haivision/srt.git' >> feeds.conf.default && \
     ./scripts/feeds update -a && \
+    ./scripts/feeds install librist srt && \
     ./scripts/feeds install -a
 
 # 5) Clean stale state
