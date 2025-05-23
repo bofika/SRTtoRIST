@@ -32,7 +32,7 @@ jobs:
 
       - name: Clone OpenWRT packages repository
         run: |
-          git clone --depth=1 --branch openwrt-23.05 https://github.com/openwrt/packages.git openwrt-packages || { echo "Failed to clone packages"; exit 1; }
+          git clone --depth=1 https://github.com/openwrt/packages.git openwrt-packages || { echo "Failed to clone packages"; exit 1; }
           mkdir -p openwrt-sdk/package/libs
           [ -d openwrt-packages/libs/srt ] || { echo "libsrt not found"; exit 1; }
           cp -r openwrt-packages/libs/srt openwrt-sdk/package/libs/ || { echo "Failed to copy libsrt"; exit 1; }
