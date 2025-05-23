@@ -55,11 +55,16 @@ jobs:
       - name: Update and install feeds
         run: |
           cd openwrt-sdk
+          # Clean existing feeds
           rm -rf feeds tmp
+          # Update feeds.conf
+          echo "src-git packages https://github.com/openwrt/packages.git^89c6c3c" > feeds.conf
+          echo "src-git luci https://github.com/openwrt/luci.git^7d55be3" >> feeds.conf
+          # Update and install feeds
           ./scripts/feeds update -a
-          ./scripts/feeds uninstall -a
-          ./scripts/feeds install -a -p packages
-          ./scripts/feeds install -a -p luci
+          ./scripts/feeds clean
+          ./scripts/feeds install -a -f -p packages
+          ./scripts/feeds install -a -f -p luci
 
       - name: Prepare package directory
         run: |
@@ -128,13 +133,18 @@ jobs:
           CONFIG_PACKAGE_kmod-md-raid10=y
           CONFIG_PACKAGE_kmod-md-raid456=y
           
-          # Disable all SSL variants except our required ones
+          # OpenSSL configuration
+          CONFIG_OPENSSL_ENGINE=y
+          CONFIG_OPENSSL_OPTIMIZE_SPEED=y
+          CONFIG_OPENSSL_WITH_ASM=y
+          CONFIG_OPENSSL_WITH_DEPRECATED=y
+          CONFIG_OPENSSL_WITH_ERROR_MESSAGES=y
+          
+          # Disable all problematic packages
           CONFIG_PACKAGE_libopenssl-conf=n
           CONFIG_PACKAGE_libopenssl-legacy=n
           CONFIG_PACKAGE_libopenssl-padlock=n
           CONFIG_PACKAGE_openssl-util=n
-          
-          # Disable all problematic packages and their dependencies
           CONFIG_PACKAGE_wpa-supplicant-mesh-openssl=n
           CONFIG_PACKAGE_wpa-supplicant-openssl=n
           CONFIG_PACKAGE_eapol-test-openssl=n
@@ -153,6 +163,12 @@ jobs:
           CONFIG_PACKAGE_luci-theme-bootstrap=n
           CONFIG_PACKAGE_luci-theme-material=n
           CONFIG_PACKAGE_luci-theme-openwrt=n
+          CONFIG_PACKAGE_wpad-basic-openssl=n
+          
+          # Disable all SSL variants
+          CONFIG_PACKAGE_libustream-openssl=n
+          CONFIG_PACKAGE_libustream-wolfssl=n
+          CONFIG_PACKAGE_libustream-mbedtls=n
           EOF
           
           # Generate full config
