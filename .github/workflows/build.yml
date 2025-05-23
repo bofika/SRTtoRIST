@@ -36,6 +36,14 @@ jobs:
           ls -la openwrt-packages/libs/
           mkdir -p openwrt-sdk/package/libs
 
+          # Ensure OpenSSL package exists
+          if [ ! -d "openwrt-packages/libs/openssl" ] && [ ! -d "openwrt-packages/libs/libopenssl" ]; then
+              echo "Cloning OpenSSL package from OpenWRT core..."
+              git clone --depth=1 https://github.com/openwrt/openwrt.git openwrt-openssl
+              mkdir -p openwrt-packages/libs/
+              cp -r openwrt-openssl/package/libs/openssl openwrt-packages/libs/
+          fi
+
           # Copy SRT package
           if [ ! -d "openwrt-packages/libs/srt" ]; then
             echo "Error: SRT package not found"
@@ -75,21 +83,15 @@ jobs:
       - name: Build the package
         run: |
           cd openwrt-sdk
-          # Enable required packages
-          echo "CONFIG_PACKAGE_libsrt=y" >> .config
-          echo "CONFIG_PACKAGE_libopenssl=y" >> .config
-          
-          # Show config before build
-          cat .config
           
           make defconfig
           
-          # Build dependencies first
-          make package/libs/libopenssl/compile V=s
-          make package/libs/srt/compile V=s
-          
-          # Build main package
-          make package/srt-to-rist-gateway/compile V=s
+          # Build with dependencies
+          make package/srt-to-rist-gateway/compile V=s || {
+            echo "Build failed. Showing last 100 lines of logs:"
+            tail -n 100 logs/package/srt-to-rist-gateway/compile.txt
+            exit 1
+          }
 
       - name: Debug .ipk location
         run: |
