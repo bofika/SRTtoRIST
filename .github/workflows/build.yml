@@ -61,9 +61,10 @@ jobs:
           # Clone main packages repo
           clone_with_retry https://github.com/openwrt/packages.git openwrt-packages || exit 1
           
-          # Clone OpenWRT core for OpenSSL
+          # Clone OpenWRT core for OpenSSL and kernel modules
           clone_with_retry https://github.com/openwrt/openwrt.git openwrt-core || exit 1
           cp -r openwrt-core/package/libs/openssl openwrt-sdk/package/libs/libopenssl
+          cp -r openwrt-core/package/kernel/linux openwrt-sdk/package/kernel/
           
           # Copy FFmpeg from packages
           cp -r openwrt-packages/multimedia/ffmpeg openwrt-sdk/package/multimedia/
@@ -134,34 +135,71 @@ jobs:
           CONFIG_PACKAGE_libavutil=m
           CONFIG_PACKAGE_libopenssl=m
           CONFIG_PACKAGE_srt-to-rist-gateway=m
+          
+          # Kernel configuration
+          CONFIG_KERNEL_BUILD_USER="OpenWRT"
+          CONFIG_KERNEL_BUILD_DOMAIN="openwrt.org"
+          CONFIG_KERNEL_KALLSYMS=y
+          CONFIG_KERNEL_DEBUG_KERNEL=y
+          CONFIG_KERNEL_DEBUG_INFO=y
+          CONFIG_KERNEL_AIO=y
+          CONFIG_KERNEL_MAGIC_SYSRQ=y
+          CONFIG_KERNEL_COREDUMP=y
+          CONFIG_KERNEL_ELF_CORE=y
+          CONFIG_KERNEL_PRINTK_TIME=y
+          
+          # MD support
           CONFIG_KERNEL_MD=y
+          CONFIG_KERNEL_BLK_DEV_MD=y
+          CONFIG_KERNEL_MD_AUTODETECT=y
+          CONFIG_KERNEL_MD_LINEAR=y
           CONFIG_KERNEL_MD_RAID0=y
           CONFIG_KERNEL_MD_RAID1=y
           CONFIG_KERNEL_MD_RAID10=y
+          CONFIG_KERNEL_MD_RAID456=y
           CONFIG_KERNEL_MD_MULTIPATH=y
+          
+          # Required kernel modules
           CONFIG_PACKAGE_kmod-md-mod=y
+          CONFIG_PACKAGE_kmod-md-linear=y
+          CONFIG_PACKAGE_kmod-md-raid0=y
+          CONFIG_PACKAGE_kmod-md-raid1=y
+          CONFIG_PACKAGE_kmod-md-raid10=y
+          CONFIG_PACKAGE_kmod-md-raid456=y
           CONFIG_PACKAGE_kmod-crypto-hash=y
+          CONFIG_PACKAGE_kmod-crypto-crc32c=y
           CONFIG_PACKAGE_kmod-lib-crc32c=y
+          
           # Disable problematic packages
           CONFIG_PACKAGE_wpa-supplicant-mesh-openssl=n
           CONFIG_PACKAGE_gnunet-utils=n
           CONFIG_PACKAGE_openssl-util=n
           EOF
           
-          # Generate full config and disable recursive dependencies
+          # Generate full config
           make defconfig
+          
+          # Fix recursive dependencies
           sed -i 's/depends on PACKAGE_/depends on !PACKAGE_/g' tmp/.config-package.in
+          
+          # Regenerate config after fixes
           make defconfig
           
           # Save config for debugging
           cp .config config.debug
 
+      - name: Build kernel and modules
+        run: |
+          cd openwrt-sdk
+          make target/linux/compile -j$(nproc) || {
+            echo "Kernel build failed"
+            exit 1
+          }
+
       - name: Build packages
         run: |
           cd openwrt-sdk
-          
-          # Build with detailed logging
-          make -j$(nproc) package/srt-to-rist-gateway/compile V=s || {
+          make package/srt-to-rist-gateway/compile V=s || {
             echo "Build failed. Checking logs..."
             if [ -f "logs/package/srt-to-rist-gateway/compile.txt" ]; then
               cat logs/package/srt-to-rist-gateway/compile.txt
