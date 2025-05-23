@@ -58,7 +58,8 @@ jobs:
           rm -rf feeds tmp
           ./scripts/feeds update -a
           ./scripts/feeds uninstall -a
-          ./scripts/feeds install -a
+          ./scripts/feeds install -a -p packages
+          ./scripts/feeds install -a -p luci
 
       - name: Prepare package directory
         run: |
@@ -127,17 +128,31 @@ jobs:
           CONFIG_PACKAGE_kmod-md-raid10=y
           CONFIG_PACKAGE_kmod-md-raid456=y
           
-          # Disable problematic packages
+          # Disable all SSL variants except our required ones
+          CONFIG_PACKAGE_libopenssl-conf=n
+          CONFIG_PACKAGE_libopenssl-legacy=n
+          CONFIG_PACKAGE_libopenssl-padlock=n
+          CONFIG_PACKAGE_openssl-util=n
+          
+          # Disable all problematic packages and their dependencies
           CONFIG_PACKAGE_wpa-supplicant-mesh-openssl=n
           CONFIG_PACKAGE_wpa-supplicant-openssl=n
           CONFIG_PACKAGE_eapol-test-openssl=n
           CONFIG_PACKAGE_gnunet-utils=n
           CONFIG_PACKAGE_checksec=n
           CONFIG_PACKAGE_luci-ssl-nginx=n
-          CONFIG_PACKAGE_openssl-util=n
           CONFIG_PACKAGE_hostapd-openssl=n
           CONFIG_PACKAGE_wpad-mesh-openssl=n
           CONFIG_PACKAGE_wpad-openssl=n
+          CONFIG_PACKAGE_nginx-ssl=n
+          CONFIG_PACKAGE_nginx-ssl-util=n
+          CONFIG_PACKAGE_nginx-mod-luci-ssl=n
+          CONFIG_PACKAGE_luci-app-nginx=n
+          CONFIG_PACKAGE_luci-ssl=n
+          CONFIG_PACKAGE_luci-mod-admin-full=n
+          CONFIG_PACKAGE_luci-theme-bootstrap=n
+          CONFIG_PACKAGE_luci-theme-material=n
+          CONFIG_PACKAGE_luci-theme-openwrt=n
           EOF
           
           # Generate full config
