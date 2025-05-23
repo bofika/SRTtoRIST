@@ -11,10 +11,30 @@ jobs:
     name: Build srt-to-rist-gateway
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+
+      - name: Cache OpenWRT SDK
+        uses: actions/cache@v3
+        with:
+          path: |
+            openwrt-sdk
+            openwrt-packages
+            openwrt-core
+            openwrt-srt
+            openwrt-librist
+          key: ${{ runner.os }}-openwrt-sdk-23.05.3-${{ hashFiles('**/*.mk', '**/*.cmake', 'Makefile') }}
+          restore-keys: |
+            ${{ runner.os }}-openwrt-sdk-23.05.3-
+
+      - name: Cache apt packages
+        uses: actions/cache@v3
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-cache-${{ hashFiles('.github/workflows/build.yml') }}
 
       - name: Free disk space
         run: |
+          df -h
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
           df -h
 
@@ -25,12 +45,14 @@ jobs:
             libssl-dev xsltproc wget unzip python3 rsync file pkg-config cmake
 
       - name: Download OpenWRT SDK
+        if: steps.cache.outputs.cache-hit != 'true'
         run: |
           wget https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic/openwrt-sdk-23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64.tar.xz
           tar -xf openwrt-sdk-23.05.3-mediatek-filogic_*.tar.xz
           mv openwrt-sdk-*/ openwrt-sdk
 
       - name: Clone OpenWRT packages repository
+        if: steps.cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p openwrt-sdk/package/{libs,multimedia}
           
@@ -57,9 +79,9 @@ jobs:
           cd openwrt-sdk
           # Clean existing feeds
           rm -rf feeds tmp
-          # Update feeds.conf
-          echo "src-git packages https://github.com/openwrt/packages.git^89c6c3c" > feeds.conf
-          echo "src-git luci https://github.com/openwrt/luci.git^7d55be3" >> feeds.conf
+          # Update feeds.conf with stable branches
+          echo "src-git packages https://github.com/openwrt/packages.git;openwrt-23.05" > feeds.conf
+          echo "src-git luci https://github.com/openwrt/luci.git;openwrt-23.05" >> feeds.conf
           # Update and install feeds
           ./scripts/feeds update -a
           ./scripts/feeds clean
@@ -182,8 +204,9 @@ jobs:
         run: |
           cd openwrt-sdk
           make package/srt-to-rist-gateway/compile V=s || {
-            echo "Build failed. Checking logs..."
-            find logs -type f -exec cat {} \;
+            echo "Build failed with error code $?"
+            echo "Checking build logs..."
+            find logs -type f -exec sh -c 'echo "=== {} ==="; cat {}' \;
             exit 1
           }
 
