@@ -13,7 +13,8 @@ define Package/$(PKG_NAME)
   SECTION:=net
   CATEGORY:=Network
   TITLE:=SRT to RIST gateway
-  DEPENDS:=+libstdcpp +librist +srt +libavformat +libavcodec +libavutil +libopenssl +libpthread
+  DEPENDS:=+libstdcpp +librist +srt +ffmpeg +libavformat +libavcodec +libavutil +libopenssl +libpthread
+  URL:=https://github.com/yourusername/srt-to-rist-gateway
 endef
 
 define Package/$(PKG_NAME)/description
@@ -22,24 +23,26 @@ endef
 
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) ./init.d $(PKG_BUILD_DIR)/
 	$(CP) ./src/* $(PKG_BUILD_DIR)/
 	$(CP) ./CMakeLists.txt $(PKG_BUILD_DIR)/
 	$(CP) ./config.json $(PKG_BUILD_DIR)/
+	$(if $(wildcard ./init.d),$(CP) ./init.d $(PKG_BUILD_DIR)/)
 endef
 
-define Build/Compile
-	$(MAKE) -C $(PKG_BUILD_DIR) install DESTDIR=$(PKG_INSTALL_DIR)
-endef
+CMAKE_OPTIONS += \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DCMAKE_VERBOSE_MAKEFILE=ON
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/srt_to_rist_gateway $(1)/usr/bin/
 
 	$(INSTALL_DIR) $(1)/etc/srt_to_rist_gateway
-	$(INSTALL_CONF) $(PKG_INSTALL_DIR)/etc/srt_to_rist_gateway/config.json $(1)/etc/srt_to_rist_gateway/
+	$(INSTALL_CONF) $(PKG_BUILD_DIR)/config.json $(1)/etc/srt_to_rist_gateway/
+
 	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/init.d/srt-to-rist-gateway $(1)/etc/init.d/srt-to-rist-gateway
+	$(if $(wildcard $(PKG_BUILD_DIR)/init.d/srt-to-rist-gateway),\
+		$(INSTALL_BIN) $(PKG_BUILD_DIR)/init.d/srt-to-rist-gateway $(1)/etc/init.d/srt-to-rist-gateway)
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
