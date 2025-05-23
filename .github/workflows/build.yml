@@ -80,6 +80,9 @@ jobs:
         run: |
           cd openwrt-sdk
           
+          # Clean feeds first
+          rm -rf feeds tmp
+          
           function update_feeds_with_retry() {
             local max_attempts=5
             local attempt=1
@@ -118,17 +121,19 @@ jobs:
         run: |
           cd openwrt-sdk
           
-          # Create initial minimal config
+          # Create base config
           cat > .config <<EOF
           CONFIG_TARGET_mediatek_filogic=y
           CONFIG_TARGET_mediatek_filogic_DEVICE_glinet_gl-mt3000=y
-          CONFIG_PACKAGE_librist=y
-          CONFIG_PACKAGE_srt=y
-          CONFIG_PACKAGE_libavformat=y
-          CONFIG_PACKAGE_libavcodec=y
-          CONFIG_PACKAGE_libavutil=y
-          CONFIG_PACKAGE_libopenssl=y
-          CONFIG_PACKAGE_srt-to-rist-gateway=y
+          CONFIG_ALL_NONSHARED=y
+          CONFIG_ALL_KMODS=y
+          CONFIG_PACKAGE_librist=m
+          CONFIG_PACKAGE_srt=m
+          CONFIG_PACKAGE_libavformat=m
+          CONFIG_PACKAGE_libavcodec=m
+          CONFIG_PACKAGE_libavutil=m
+          CONFIG_PACKAGE_libopenssl=m
+          CONFIG_PACKAGE_srt-to-rist-gateway=m
           CONFIG_KERNEL_MD=y
           CONFIG_KERNEL_MD_RAID0=y
           CONFIG_KERNEL_MD_RAID1=y
@@ -137,37 +142,34 @@ jobs:
           CONFIG_PACKAGE_kmod-md-mod=y
           CONFIG_PACKAGE_kmod-crypto-hash=y
           CONFIG_PACKAGE_kmod-lib-crc32c=y
+          # Disable problematic packages
+          CONFIG_PACKAGE_wpa-supplicant-mesh-openssl=n
+          CONFIG_PACKAGE_gnunet-utils=n
+          CONFIG_PACKAGE_openssl-util=n
           EOF
           
-          # Generate full config
+          # Generate full config and disable recursive dependencies
+          make defconfig
+          sed -i 's/depends on PACKAGE_/depends on !PACKAGE_/g' tmp/.config-package.in
           make defconfig
           
-          # Verify config
-          make kernel_menuconfig
-          make menuconfig
+          # Save config for debugging
+          cp .config config.debug
 
-      - name: Build kernel and packages
+      - name: Build packages
         run: |
           cd openwrt-sdk
           
-          # Build kernel first
-          make target/linux/compile V=s || {
-            echo "Kernel compilation failed"
-            cat build.log
-            exit 1
-          }
-          
-          # Build base packages
-          make package/libs/compile V=s || {
-            echo "Base libraries compilation failed"
-            cat build.log
-            exit 1
-          }
-          
-          # Build our package and dependencies
-          make package/srt-to-rist-gateway/compile V=s || {
-            echo "Package build failed"
-            cat build.log
+          # Build with detailed logging
+          make -j$(nproc) package/srt-to-rist-gateway/compile V=s || {
+            echo "Build failed. Checking logs..."
+            if [ -f "logs/package/srt-to-rist-gateway/compile.txt" ]; then
+              cat logs/package/srt-to-rist-gateway/compile.txt
+            fi
+            if [ -f "config.debug" ]; then
+              echo "Debug config:"
+              cat config.debug
+            fi
             exit 1
           }
 
@@ -176,3 +178,12 @@ jobs:
         with:
           name: srt-to-rist-gateway-ipk
           path: openwrt-sdk/bin/packages/*/*/srt-to-rist-gateway_*.ipk
+
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            openwrt-sdk/logs
+            openwrt-sdk/config.debug
