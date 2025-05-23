@@ -32,28 +32,53 @@ jobs:
 
       - name: Clone OpenWRT packages repository
         run: |
-          git clone --depth=1 https://github.com/openwrt/packages.git openwrt-packages
+          # Configure Git for large repos
+          git config --global http.postBuffer 524288000
+          git config --global core.compression 9
+          
+          # Clone with retries
+          for i in {1..3}; do
+            git clone --depth=1 https://github.com/openwrt/packages.git openwrt-packages && break
+            echo "Retrying clone... (attempt $i)"
+            sleep 5
+          done
+          
           mkdir -p openwrt-sdk/package/{libs,multimedia}
 
           # Clone OpenWRT core for OpenSSL
-          git clone --depth=1 https://github.com/openwrt/openwrt.git openwrt-core
+          for i in {1..3}; do
+            git clone --depth=1 https://github.com/openwrt/openwrt.git openwrt-core && break
+            echo "Retrying clone... (attempt $i)"
+            sleep 5
+          done
           cp -r openwrt-core/package/libs/openssl openwrt-sdk/package/libs/libopenssl
 
           # Copy FFmpeg from packages
           cp -r openwrt-packages/multimedia/ffmpeg openwrt-sdk/package/multimedia/
 
           # Clone SRT package
-          git clone --depth=1 https://github.com/Haivision/srt.git openwrt-srt
+          for i in {1..3}; do
+            git clone --depth=1 https://github.com/Haivision/srt.git openwrt-srt && break
+            echo "Retrying clone... (attempt $i)"
+            sleep 5
+          done
           cp -r openwrt-srt openwrt-sdk/package/libs/srt
 
           # Clone librist package
-          git clone --depth=1 https://code.videolan.org/rist/librist.git openwrt-librist
+          for i in {1..3}; do
+            git clone --depth=1 https://code.videolan.org/rist/librist.git openwrt-librist && break
+            echo "Retrying clone... (attempt $i)"
+            sleep 5
+          done
           cp -r openwrt-librist openwrt-sdk/package/libs/librist
 
-          # Update feeds
+          # Update feeds with retries
           cd openwrt-sdk
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
+          for i in {1..3}; do
+            ./scripts/feeds update -a && ./scripts/feeds install -a && break
+            echo "Retrying feeds update... (attempt $i)"
+            sleep 5
+          done
 
       - name: Prepare package directory
         run: |
@@ -75,16 +100,11 @@ jobs:
         run: |
           cd openwrt-sdk
           
-          # Configure Git for large repos
-          git config --global http.postBuffer 524288000
-          
-          # Create initial config
-          make defconfig
-          
-          # Enable required packages and kernel modules
-          cat >> .config <<EOF
+          # Enable all required packages and kernel modules
+          cat > .config <<EOF
           CONFIG_ALL_NONSHARED=y
           CONFIG_ALL_KMODS=y
+          CONFIG_ALL=y
           CONFIG_PACKAGE_librist=y
           CONFIG_PACKAGE_srt=y
           CONFIG_PACKAGE_libavformat=y
@@ -97,10 +117,17 @@ jobs:
           CONFIG_KERNEL_MD_RAID1=y
           CONFIG_KERNEL_MD_RAID10=y
           CONFIG_KERNEL_MD_MULTIPATH=y
+          CONFIG_PACKAGE_kmod-md-mod=y
+          CONFIG_PACKAGE_kmod-crypto-hash=y
+          CONFIG_PACKAGE_kmod-lib-crc32c=y
           EOF
           
-          # Refresh config and build kernel first
+          # Generate kernel config and build kernel first
           make defconfig
+          make target/linux/compile V=s || {
+            echo "Kernel compilation failed"
+            exit 1
+          }
           
           # Build all packages first to resolve dependencies
           make package/compile -j$(nproc) V=s || {
@@ -108,7 +135,7 @@ jobs:
             exit 1
           }
           
-          # Build our package
+          # Finally build our package
           make package/srt-to-rist-gateway/compile -j$(nproc) V=s || {
             echo "Package build failed"
             exit 1
