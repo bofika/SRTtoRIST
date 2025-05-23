@@ -33,36 +33,24 @@ jobs:
       - name: Clone OpenWRT packages repository
         run: |
           git clone --depth=1 https://github.com/openwrt/packages.git openwrt-packages
-          ls -la openwrt-packages/libs/
           mkdir -p openwrt-sdk/package/libs
 
-          # Ensure OpenSSL package exists
-          if [ ! -d "openwrt-packages/libs/openssl" ] && [ ! -d "openwrt-packages/libs/libopenssl" ]; then
-              echo "Cloning OpenSSL package from OpenWRT core..."
-              git clone --depth=1 https://github.com/openwrt/openwrt.git openwrt-openssl
-              mkdir -p openwrt-packages/libs/
-              cp -r openwrt-openssl/package/libs/openssl openwrt-packages/libs/
-          fi
+          # Clone OpenWRT core for OpenSSL
+          git clone --depth=1 https://github.com/openwrt/openwrt.git openwrt-core
+          cp -r openwrt-core/package/libs/openssl openwrt-sdk/package/libs/libopenssl
 
-          # Copy SRT package
-          if [ ! -d "openwrt-packages/libs/srt" ]; then
-            echo "Error: SRT package not found"
-            exit 1
-          fi
-          cp -r openwrt-packages/libs/srt openwrt-sdk/package/libs/ || { echo "Failed to copy SRT package"; exit 1; }
+          # Clone SRT package
+          git clone --depth=1 https://github.com/Haivision/srt.git openwrt-srt
+          cp -r openwrt-srt openwrt-sdk/package/libs/srt
 
-          # Copy OpenSSL package
-          if [ -d "openwrt-packages/libs/openssl" ]; then
-            cp -r openwrt-packages/libs/openssl openwrt-sdk/package/libs/libopenssl || { echo "Failed to copy OpenSSL package"; exit 1; }
-          elif [ -d "openwrt-packages/libs/libopenssl" ]; then
-            cp -r openwrt-packages/libs/libopenssl openwrt-sdk/package/libs/libopenssl || { echo "Failed to copy OpenSSL package"; exit 1; }
-          else
-            echo "Error: OpenSSL package not found in either libs/openssl or libs/libopenssl"
-            exit 1
-          fi
+          # Clone librist package
+          git clone --depth=1 https://code.videolan.org/rist/librist.git openwrt-librist
+          cp -r openwrt-librist openwrt-sdk/package/libs/librist
 
-          # Verify copied packages
-          ls -la openwrt-sdk/package/libs/
+          # Update feeds
+          cd openwrt-sdk
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
 
       - name: Prepare package directory
         run: |
@@ -83,19 +71,12 @@ jobs:
       - name: Build the package
         run: |
           cd openwrt-sdk
-          
+          mkdir -p logs/package/srt-to-rist-gateway
           make defconfig
-          
-          # Build with dependencies
-          make package/srt-to-rist-gateway/compile V=s || {
+          make package/srt-to-rist-gateway/compile V=s CONFIG_PACKAGE_srt-to-rist-gateway=y 2>&1 | tee logs/package/srt-to-rist-gateway/compile.txt || {
             echo "Build failed. Showing last 100 lines of logs:"
             tail -n 100 logs/package/srt-to-rist-gateway/compile.txt
             exit 1
-          }
-
-      - name: Debug .ipk location
-        run: |
-          find openwrt-sdk/bin/packages -name "srt-to-rist-gateway_*.ipk"
 
       - name: Upload .ipk package
         uses: actions/upload-artifact@v4
