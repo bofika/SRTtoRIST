@@ -75,11 +75,23 @@ jobs:
         run: |
           cd openwrt-sdk
           mkdir -p logs/package/srt-to-rist-gateway
+          # Enable required kernel modules
+          echo 'CONFIG_PACKAGE_kmod-md-mod=y' >> .config
+          echo 'CONFIG_PACKAGE_kmod-crypto-hash=y' >> .config
+          echo 'CONFIG_PACKAGE_kmod-lib-crc32c=y' >> .config
+          
           make defconfig
+          
+          # Build kernel and required modules first
+          make target/linux/compile V=s
+          
+          # Build dependencies
           make package/ffmpeg/compile V=s
           make package/srt/compile V=s
           make package/librist/compile V=s
-          make package/srt-to-rist-gateway/compile V=s CONFIG_PACKAGE_srt-to-rist-gateway=y 2>&1 | tee logs/package/srt-to-rist-gateway/compile.txt || {
+          
+          # Build our package with verbose output
+          make package/srt-to-rist-gateway/compile V=sc 2>&1 | tee logs/package/srt-to-rist-gateway/compile.txt || {
             echo "Build failed. Showing last 100 lines of logs:"
             tail -n 100 logs/package/srt-to-rist-gateway/compile.txt
             exit 1
