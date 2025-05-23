@@ -5,12 +5,13 @@ ENV DEBIAN_FRONTEND=noninteractive \
     OPENWRT_SDK_VERSION=23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       build-essential ca-certificates wget git pkg-config cmake \
       libncurses5-dev libncursesw5-dev zlib1g-dev \
       gawk gettext libssl-dev xsltproc rsync file \
-      unzip python3 python3-distutils python3-stdlib musl-tools && \
+      unzip python3 python3-distutils python3-pkg-resources musl-tools && \
     rm -rf /var/lib/apt/lists/*
+
 
 # 2) Download & unpack the OpenWRT SDK
 WORKDIR /workspace
