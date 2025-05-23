@@ -13,7 +13,7 @@ define Package/$(PKG_NAME)
   SECTION:=net
   CATEGORY:=Network
   TITLE:=SRT to RIST gateway
-    DEPENDS:=+librist +srt +libavformat +libavcodec +libavutil +libstdcpp
+  DEPENDS:=+libopenssl +librist +srt +libavformat +libavcodec +libavutil +libstdcpp
 endef
 
 define Package/$(PKG_NAME)/description
@@ -38,7 +38,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/etc/srt_to_rist_gateway
 	$(INSTALL_CONF) $(PKG_INSTALL_DIR)/etc/srt_to_rist_gateway/config.json $(1)/etc/srt_to_rist_gateway/
 	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./init.d/srt-to-rist-gateway $(1)/etc/init.d/
+	$(INSTALL_BIN) ./init.d/stream_relay $(1)/etc/init.d/srt-to-rist-gateway
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
