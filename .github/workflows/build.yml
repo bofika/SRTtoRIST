@@ -9,6 +9,9 @@ jobs:
   build-ipk:
     runs-on: ubuntu-latest
     name: Build srt-to-rist-gateway
+    env:
+      TERM: xterm
+      FORCE_UNSAFE_CONFIGURE: 1
     steps:
       - name: Checkout repository
         uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
@@ -22,15 +25,9 @@ jobs:
             openwrt-core
             openwrt-srt
             openwrt-librist
-          key: ${{ runner.os }}-openwrt-sdk-23.05.3-${{ hashFiles('**/*.mk', '**/*.cmake', 'Makefile') }}
+          key: ${{ runner.os }}-openwrt-sdk-23.05.3-${{ hashFiles('**/*.mk', '**/*.cmake', 'Makefile', 'feeds.conf') }}
           restore-keys: |
             ${{ runner.os }}-openwrt-sdk-23.05.3-
-
-      - name: Cache apt packages
-        uses: actions/cache@v3
-        with:
-          path: /var/cache/apt/archives
-          key: ${{ runner.os }}-apt-cache-${{ hashFiles('.github/workflows/build.yml') }}
 
       - name: Free disk space
         run: |
@@ -40,11 +37,33 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          sudo apt update
-          sudo apt install -y build-essential libncurses5-dev zlib1g-dev gawk git gettext \
-            libssl-dev xsltproc wget unzip python3 rsync file pkg-config cmake \
-            libtool automake autoconf bison flex texinfo help2man ccache \
-            libavcodec-dev libavutil-dev libavformat-dev
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libncurses5-dev \
+            libncursesw5-dev \
+            zlib1g-dev \
+            gawk \
+            git \
+            gettext \
+            libssl-dev \
+            xsltproc \
+            wget \
+            unzip \
+            python3 \
+            python3-distutils \
+            python3-setuptools \
+            rsync \
+            file \
+            pkg-config \
+            cmake \
+            libtool \
+            automake \
+            autoconf \
+            bison \
+            flex \
+            device-tree-compiler \
+            ccache
 
       - name: Download OpenWRT SDK
         if: steps.cache.outputs.cache-hit != 'true'
@@ -59,21 +78,21 @@ jobs:
           mkdir -p openwrt-sdk/package/{libs,multimedia}
           
           # Clone main packages repo with specific branch
-          git clone --depth=1 --branch openwrt-23.05 https://github.com/openwrt/packages.git openwrt-packages
+          git clone --depth=1 --branch openwrt-23.05 https://github.com/openwrt/packages.git openwrt-packages || exit 1
           
           # Clone OpenWRT core for OpenSSL
-          git clone --depth=1 --branch openwrt-23.05 https://github.com/openwrt/openwrt.git openwrt-core
+          git clone --depth=1 --branch openwrt-23.05 https://github.com/openwrt/openwrt.git openwrt-core || exit 1
           cp -r openwrt-core/package/libs/openssl openwrt-sdk/package/libs/libopenssl
           
           # Copy FFmpeg from packages
           cp -r openwrt-packages/multimedia/ffmpeg openwrt-sdk/package/multimedia/
           
           # Clone SRT package
-          git clone --depth=1 https://github.com/Haivision/srt.git openwrt-srt
+          git clone --depth=1 https://github.com/Haivision/srt.git openwrt-srt || exit 1
           cp -r openwrt-srt openwrt-sdk/package/libs/srt
           
           # Clone librist package
-          git clone --depth=1 https://code.videolan.org/rist/librist.git openwrt-librist
+          git clone --depth=1 https://code.videolan.org/rist/librist.git openwrt-librist || exit 1
           cp -r openwrt-librist openwrt-sdk/package/libs/librist
 
       - name: Update and install feeds
@@ -85,13 +104,20 @@ jobs:
           cat > feeds.conf <<EOF
           src-git packages https://github.com/openwrt/packages.git;openwrt-23.05
           src-git luci https://github.com/openwrt/luci.git;openwrt-23.05
-          src-git multimedia https://github.com/openwrt/packages.git;openwrt-23.05
+          src-git routing https://github.com/openwrt/routing.git;openwrt-23.05
+          src-git telephony https://github.com/openwrt/telephony.git;openwrt-23.05
           EOF
+          
           # Update and install feeds
-          export TERM=xterm
-          ./scripts/feeds update -a
+          ./scripts/feeds update -a || exit 1
           ./scripts/feeds clean
-          ./scripts/feeds install -a -f
+          ./scripts/feeds install -a -f || exit 1
+          
+          # Install specific packages
+          ./scripts/feeds install ffmpeg
+          ./scripts/feeds install libavcodec
+          ./scripts/feeds install libavutil
+          ./scripts/feeds install libavformat
 
       - name: Prepare package directory
         run: |
@@ -110,79 +136,46 @@ jobs:
       - name: Configure build
         run: |
           cd openwrt-sdk
-          export TERM=xterm
           
           # Create minimal config with required packages
           cat > .config <<EOF
           CONFIG_TARGET_mediatek_filogic=y
           CONFIG_TARGET_mediatek_filogic_DEVICE_glinet_gl-mt3000=y
           
-          # Required packages
           CONFIG_PACKAGE_librist=m
           CONFIG_PACKAGE_srt=m
-          CONFIG_PACKAGE_libavformat=m
-          CONFIG_PACKAGE_libavcodec=m
-          CONFIG_PACKAGE_libavutil=m
+          CONFIG_PACKAGE_ffmpeg=m
           CONFIG_PACKAGE_libopenssl=m
           CONFIG_PACKAGE_libpthread=m
           CONFIG_PACKAGE_srt-to-rist-gateway=m
           
-          # FFmpeg configuration
+          CONFIG_PACKAGE_kmod-crypto-hash=y
+          CONFIG_PACKAGE_kmod-crypto-crc32c=y
+          
           CONFIG_FFMPEG_CUSTOM_ENCODERS=y
           CONFIG_FFMPEG_CUSTOM_DECODERS=y
           CONFIG_FFMPEG_CUSTOM_MUXERS=y
           CONFIG_FFMPEG_CUSTOM_DEMUXERS=y
           CONFIG_FFMPEG_CUSTOM_PARSERS=y
           CONFIG_FFMPEG_CUSTOM_PROTOCOLS=y
-          CONFIG_FFMPEG_CUSTOM_FILTERS=y
-          CONFIG_FFMPEG_CUSTOM_DEVICES=y
           
-          # OpenSSL configuration
           CONFIG_OPENSSL_ENGINE=y
           CONFIG_OPENSSL_OPTIMIZE_SPEED=y
           CONFIG_OPENSSL_WITH_ASM=y
           CONFIG_OPENSSL_WITH_DEPRECATED=y
           CONFIG_OPENSSL_WITH_ERROR_MESSAGES=y
           
-          # Build options
-          CONFIG_BINARY_FOLDER=y
-          CONFIG_DOWNLOAD_FOLDER=y
-          CONFIG_LOCALMIRROR=""
-          CONFIG_AUTOREBUILD=y
-          CONFIG_BUILD_LOG=y
           CONFIG_CCACHE=y
           EOF
           
-          # Generate full config
           make defconfig
-          
-          # Show final config
           make -j1 V=s config-dump
-
-      - name: Build tools and toolchain
-        run: |
-          cd openwrt-sdk
-          export TERM=xterm
-          # Build tools with verbose output and single thread
-          make tools/install -j1 V=s || {
-            echo "Tools build failed. Checking logs..."
-            find logs -type f -exec sh -c 'echo "=== {} ==="; cat {}' \;
-            exit 1
-          }
-          # Build toolchain with verbose output and single thread
-          make toolchain/install -j1 V=s || {
-            echo "Toolchain build failed. Checking logs..."
-            find logs -type f -exec sh -c 'echo "=== {} ==="; cat {}' \;
-            exit 1
-          }
 
       - name: Build package
         run: |
           cd openwrt-sdk
-          export TERM=xterm
           make package/srt-to-rist-gateway/compile V=s || {
-            echo "Build failed with error code $?"
-            echo "Checking build logs..."
+            echo "Build failed. Checking logs..."
             find logs -type f -exec sh -c 'echo "=== {} ==="; cat {}' \;
             exit 1
           }
