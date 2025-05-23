@@ -22,6 +22,7 @@ endef
 
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
+	$(CP) ./init.d $(PKG_BUILD_DIR)/
 	$(CP) ./src/* $(PKG_BUILD_DIR)/
 	$(CP) ./CMakeLists.txt $(PKG_BUILD_DIR)/
 	$(CP) ./config.json $(PKG_BUILD_DIR)/
@@ -38,7 +39,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/etc/srt_to_rist_gateway
 	$(INSTALL_CONF) $(PKG_INSTALL_DIR)/etc/srt_to_rist_gateway/config.json $(1)/etc/srt_to_rist_gateway/
 	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./init.d/stream_relay $(1)/etc/init.d/srt-to-rist-gateway
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/init.d/srt-to-rist-gateway $(1)/etc/init.d/srt-to-rist-gateway
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
