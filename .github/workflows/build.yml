@@ -75,10 +75,36 @@ jobs:
         run: |
           cd openwrt-sdk
           
-          # Create minimal config
+          # Create minimal config with required kernel modules
           cat > .config <<EOF
           CONFIG_TARGET_mediatek_filogic=y
           CONFIG_TARGET_mediatek_filogic_DEVICE_glinet_gl-mt3000=y
+          
+          # Required kernel modules
+          CONFIG_KERNEL_MIPS_FPU_EMULATOR=y
+          CONFIG_KERNEL_MIPS_KERNEL_FPU=y
+          CONFIG_KERNEL_KALLSYMS=y
+          CONFIG_KERNEL_DEBUG_INFO=y
+          CONFIG_KERNEL_DEBUG_INFO_REDUCED=n
+          CONFIG_KERNEL_DEBUG_INFO_BTF=n
+          CONFIG_KERNEL_AIO=y
+          CONFIG_KERNEL_IO_URING=y
+          CONFIG_KERNEL_FHANDLE=y
+          CONFIG_KERNEL_FANOTIFY=y
+          CONFIG_KERNEL_MAGIC_SYSRQ=y
+          CONFIG_KERNEL_COREDUMP=y
+          CONFIG_KERNEL_ELF_CORE=y
+          CONFIG_KERNEL_PRINTK_TIME=y
+          CONFIG_KERNEL_KEXEC=y
+          CONFIG_KERNEL_PROC_VMCORE=y
+          CONFIG_KERNEL_PROC_KCORE=y
+          CONFIG_KERNEL_CRASH_DUMP=y
+          CONFIG_KERNEL_KEYS=y
+          CONFIG_KERNEL_CGROUPS=y
+          CONFIG_KERNEL_FAIR_GROUP_SCHED=y
+          CONFIG_KERNEL_PROC_PID_CPUSET=y
+          
+          # Required packages
           CONFIG_PACKAGE_librist=m
           CONFIG_PACKAGE_srt=m
           CONFIG_PACKAGE_libavformat=m
@@ -86,10 +112,27 @@ jobs:
           CONFIG_PACKAGE_libavutil=m
           CONFIG_PACKAGE_libopenssl=m
           CONFIG_PACKAGE_srt-to-rist-gateway=m
+          
+          # Additional dependencies
+          CONFIG_PACKAGE_kmod-crypto-hash=y
+          CONFIG_PACKAGE_kmod-crypto-crc32c=y
+          CONFIG_PACKAGE_kmod-lib-crc32c=y
+          CONFIG_PACKAGE_kmod-lib-raid6=y
+          CONFIG_PACKAGE_kmod-lib-xor=y
+          CONFIG_PACKAGE_kmod-md-mod=y
+          CONFIG_PACKAGE_kmod-md-linear=y
+          CONFIG_PACKAGE_kmod-md-raid0=y
+          CONFIG_PACKAGE_kmod-md-raid1=y
+          CONFIG_PACKAGE_kmod-md-raid10=y
+          CONFIG_PACKAGE_kmod-md-raid456=y
           EOF
           
           # Generate full config
           make defconfig
+          
+          # Ensure kernel modules are built
+          make target/linux/prepare
+          make target/linux/compile
 
       - name: Build package
         run: |
