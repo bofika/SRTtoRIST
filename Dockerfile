@@ -1,6 +1,8 @@
 # 1) Base image and install host‐side deps
 FROM ubuntu:22.04
 
+ARG GITHUB_TOKEN
+
 ENV DEBIAN_FRONTEND=noninteractive \
     OPENWRT_SDK_VERSION=23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64
 
@@ -20,23 +22,22 @@ RUN wget https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic
     mv openwrt-sdk-${OPENWRT_SDK_VERSION} openwrt-sdk
 
 # 3) Configure feeds
-RUN cd openwrt-sdk && \
+WORKDIR /workspace/openwrt-sdk
+
+RUN mkdir -p feeds/librist && \
+    git clone https://${GITHUB_TOKEN}@github.com/nanake/librist-openwrt.git feeds/librist && \
     echo 'src-git packages https://github.com/openwrt/packages.git' > feeds.conf.default && \
-    echo 'src-git librist https://github.com/nanake/librist-openwrt.git' >> feeds.conf.default && \
     echo 'src-git srt https://github.com/openwrt/packages.git' >> feeds.conf.default && \
     ./scripts/feeds update -a && \
     ./scripts/feeds install -a
 
 # 4) Copy in your package into the SDK
-RUN mkdir -p openwrt-sdk/package/srt-to-rist-gateway
-COPY . openwrt-sdk/package/srt-to-rist-gateway/
-
-WORKDIR /workspace/openwrt-sdk
+RUN mkdir -p package/srt-to-rist-gateway
+COPY . package/srt-to-rist-gateway/
 
 # 5) Build your package
 RUN make defconfig && \
     make -j$(nproc) package/srt-to-rist-gateway/compile V=s
 
 # 6) Copy the resulting .ipk out to /workspace
-RUN cp bin/packages/*/*/srt-to-rist-gateway_*.ipk /workspace/ || \
-    cp bin/targets/*/*/packages/srt-to-rist-gateway_*.ipk /workspace/
+RUN find bin/ -name "srt-to-rist-gateway_*.ipk" -exec cp {} /workspace/ \;
