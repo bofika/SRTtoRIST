@@ -13,7 +13,7 @@ define Package/$(PKG_NAME)
   SECTION:=net
   CATEGORY:=Network
   TITLE:=SRT to RIST gateway
-  DEPENDS:=+libsrt +libavformat +libavcodec +libavutil +libstdcpp
+    DEPENDS:=+librist +srt +libavformat +libavcodec +libavutil +libstdcpp
 endef
 
 define Package/$(PKG_NAME)/description
