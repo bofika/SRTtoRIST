@@ -16,19 +16,21 @@ RUN apt-get update && \
 # 2) Download & unpack the OpenWRT SDK
 WORKDIR /workspace
 RUN wget https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic/openwrt-sdk-${OPENWRT_SDK_VERSION}.tar.xz && \
-    tar xf openwrt-sdk-${OPENWRT_SDK_VERSION}.tar.xz && \
-    mv openwrt-sdk-${OPENWRT_SDK_VERSION} openwrt-sdk
+    tar xf openwrt-sdk-${OPENWRT_SDK_VERSION}.tar.xz && \ 
+    mv openwrt-sdk-${OPENWRT_SDK_VERSION} openwrt-sdk && \
+    mkdir -p openwrt-sdk/package/srt-to-rist-gateway
 
 # 3) Copy in your package into the SDK
-COPY . /workspace/openwrt-sdk/package/srt-to-rist-gateway/
+COPY CMakeLists.txt Makefile config.json /workspace/openwrt-sdk/package/srt-to-rist-gateway/
+COPY src/ /workspace/openwrt-sdk/package/srt-to-rist-gateway/src/
+COPY init.d/ /workspace/openwrt-sdk/package/srt-to-rist-gateway/init.d/
 
 WORKDIR /workspace/openwrt-sdk
 
 # 4) Build your package
 RUN make defconfig && \
-    make -j$(nproc) toolchain/install V=s && \
-    make -j$(nproc) tools/install V=s && \
-    make package/srt-to-rist-gateway/compile V=s
+    make -j$(nproc) package/srt-to-rist-gateway/compile V=s
 
 # 5) Copy the resulting .ipk out to /workspace
-RUN cp bin/packages/*/*/srt-to-rist-gateway_*.ipk /workspace/
+RUN cp bin/packages/*/*/srt-to-rist-gateway_*.ipk /workspace/ || \
+    cp bin/targets/*/*/packages/srt-to-rist-gateway_*.ipk /workspace/
