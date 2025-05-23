@@ -35,6 +35,7 @@ jobs:
           git clone --depth=1 https://github.com/openwrt/packages.git openwrt-packages
           mkdir -p openwrt-sdk/package/libs
           cp -r openwrt-packages/libs/srt openwrt-sdk/package/libs/
+          cp -r openwrt-packages/libs/openssl openwrt-sdk/package/libs/libopenssl
 
       - name: Prepare package directory
         run: |
