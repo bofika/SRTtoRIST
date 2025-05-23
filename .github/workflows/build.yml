@@ -24,6 +24,13 @@ jobs:
           sudo apt install -y build-essential libncurses5-dev zlib1g-dev gawk git gettext \
             libssl-dev xsltproc wget unzip python3 rsync file pkg-config cmake
 
+      - name: Configure Git
+        run: |
+          git config --global http.postBuffer 524288000
+          git config --global core.compression 9
+          git config --global http.lowSpeedLimit 1000
+          git config --global http.lowSpeedTime 60
+
       - name: Download OpenWRT SDK
         run: |
           wget https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic/openwrt-sdk-23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64.tar.xz
@@ -32,53 +39,63 @@ jobs:
 
       - name: Clone OpenWRT packages repository
         run: |
-          # Configure Git for large repos
-          git config --global http.postBuffer 524288000
-          git config --global core.compression 9
-          
-          # Clone with retries
-          for i in {1..3}; do
-            git clone --depth=1 https://github.com/openwrt/packages.git openwrt-packages && break
-            echo "Retrying clone... (attempt $i)"
-            sleep 5
-          done
-          
           mkdir -p openwrt-sdk/package/{libs,multimedia}
-
+          
+          function clone_with_retry() {
+            local repo=$1
+            local dir=$2
+            local max_attempts=5
+            local attempt=1
+            
+            while [ $attempt -le $max_attempts ]; do
+              echo "Cloning $repo (attempt $attempt/$max_attempts)"
+              if git clone --depth=1 "$repo" "$dir"; then
+                return 0
+              fi
+              attempt=$((attempt + 1))
+              sleep $((attempt * 5))
+            done
+            return 1
+          }
+          
+          # Clone main packages repo
+          clone_with_retry https://github.com/openwrt/packages.git openwrt-packages || exit 1
+          
           # Clone OpenWRT core for OpenSSL
-          for i in {1..3}; do
-            git clone --depth=1 https://github.com/openwrt/openwrt.git openwrt-core && break
-            echo "Retrying clone... (attempt $i)"
-            sleep 5
-          done
+          clone_with_retry https://github.com/openwrt/openwrt.git openwrt-core || exit 1
           cp -r openwrt-core/package/libs/openssl openwrt-sdk/package/libs/libopenssl
-
+          
           # Copy FFmpeg from packages
           cp -r openwrt-packages/multimedia/ffmpeg openwrt-sdk/package/multimedia/
-
+          
           # Clone SRT package
-          for i in {1..3}; do
-            git clone --depth=1 https://github.com/Haivision/srt.git openwrt-srt && break
-            echo "Retrying clone... (attempt $i)"
-            sleep 5
-          done
+          clone_with_retry https://github.com/Haivision/srt.git openwrt-srt || exit 1
           cp -r openwrt-srt openwrt-sdk/package/libs/srt
-
+          
           # Clone librist package
-          for i in {1..3}; do
-            git clone --depth=1 https://code.videolan.org/rist/librist.git openwrt-librist && break
-            echo "Retrying clone... (attempt $i)"
-            sleep 5
-          done
+          clone_with_retry https://code.videolan.org/rist/librist.git openwrt-librist || exit 1
           cp -r openwrt-librist openwrt-sdk/package/libs/librist
 
-          # Update feeds with retries
+      - name: Update and install feeds
+        run: |
           cd openwrt-sdk
-          for i in {1..3}; do
-            ./scripts/feeds update -a && ./scripts/feeds install -a && break
-            echo "Retrying feeds update... (attempt $i)"
-            sleep 5
-          done
+          
+          function update_feeds_with_retry() {
+            local max_attempts=5
+            local attempt=1
+            
+            while [ $attempt -le $max_attempts ]; do
+              echo "Updating feeds (attempt $attempt/$max_attempts)"
+              if ./scripts/feeds update -a && ./scripts/feeds install -a; then
+                return 0
+              fi
+              attempt=$((attempt + 1))
+              sleep $((attempt * 5))
+            done
+            return 1
+          }
+          
+          update_feeds_with_retry || exit 1
 
       - name: Prepare package directory
         run: |
@@ -90,21 +107,21 @@ jobs:
       - name: Clean previous builds
         run: |
           rm -rf openwrt-sdk/build_dir/target-* openwrt-sdk/staging_dir/target-*
+          rm -rf openwrt-sdk/tmp
 
       - name: Check system resources
         run: |
           free -h
           df -h
 
-      - name: Build the package
+      - name: Configure build
         run: |
           cd openwrt-sdk
           
-          # Enable all required packages and kernel modules
+          # Create initial minimal config
           cat > .config <<EOF
-          CONFIG_ALL_NONSHARED=y
-          CONFIG_ALL_KMODS=y
-          CONFIG_ALL=y
+          CONFIG_TARGET_mediatek_filogic=y
+          CONFIG_TARGET_mediatek_filogic_DEVICE_glinet_gl-mt3000=y
           CONFIG_PACKAGE_librist=y
           CONFIG_PACKAGE_srt=y
           CONFIG_PACKAGE_libavformat=y
@@ -122,22 +139,35 @@ jobs:
           CONFIG_PACKAGE_kmod-lib-crc32c=y
           EOF
           
-          # Generate kernel config and build kernel first
+          # Generate full config
           make defconfig
+          
+          # Verify config
+          make kernel_menuconfig
+          make menuconfig
+
+      - name: Build kernel and packages
+        run: |
+          cd openwrt-sdk
+          
+          # Build kernel first
           make target/linux/compile V=s || {
             echo "Kernel compilation failed"
+            cat build.log
             exit 1
           }
           
-          # Build all packages first to resolve dependencies
-          make package/compile -j$(nproc) V=s || {
-            echo "Package compilation failed"
+          # Build base packages
+          make package/libs/compile V=s || {
+            echo "Base libraries compilation failed"
+            cat build.log
             exit 1
           }
           
-          # Finally build our package
-          make package/srt-to-rist-gateway/compile -j$(nproc) V=s || {
+          # Build our package and dependencies
+          make package/srt-to-rist-gateway/compile V=s || {
             echo "Package build failed"
+            cat build.log
             exit 1
           }
 
