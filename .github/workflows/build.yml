@@ -57,7 +57,7 @@ jobs:
           cd openwrt-sdk
           rm -rf feeds tmp
           ./scripts/feeds update -a
-          ./scripts/feeds install -a
+          ./scripts/feeds install -a -f
 
       - name: Prepare package directory
         run: |
@@ -125,14 +125,21 @@ jobs:
           CONFIG_PACKAGE_kmod-md-raid1=y
           CONFIG_PACKAGE_kmod-md-raid10=y
           CONFIG_PACKAGE_kmod-md-raid456=y
+          
+          # Break recursive dependencies
+          CONFIG_PACKAGE_wpa-supplicant-mesh-openssl=n
+          CONFIG_PACKAGE_wpa-supplicant-openssl=n
+          CONFIG_PACKAGE_eapol-test-openssl=n
+          CONFIG_PACKAGE_gnunet-utils=n
           EOF
           
           # Generate full config
           make defconfig
           
-          # Ensure kernel modules are built
-          make target/linux/prepare
-          make target/linux/compile
+          # Build kernel and tools first
+          make tools/install -j$(nproc)
+          make toolchain/install -j$(nproc)
+          make target/linux/compile -j$(nproc) V=s
 
       - name: Build package
         run: |
