@@ -27,14 +27,15 @@ WORKDIR /workspace/openwrt-sdk
 # 4) Add external librist & SRT feeds, update & install them
 RUN echo 'src-git librist https://github.com/nanake/librist.git' >> feeds.conf.default && \
     echo 'src-git srt https://github.com/Haivision/srt.git' >> feeds.conf.default && \
+    echo 'src-git ffmpeg https://github.com/openwrt/packages.git' >> feeds.conf.default && \
     ./scripts/feeds update -a && \
-    ./scripts/feeds install -a librist srt libavformat libavcodec libavutil
+    ./scripts/feeds install -a
 
 # 5) Clean stale state
 RUN rm -rf build_dir staging_dir/target-* staging_dir/toolchain-*
 
 # 6) Build your package
-RUN make defconfig && \
+RUN make defconfig && make toolchain/install && \
     make package/srt-to-rist-gateway/compile V=s
 
 # 7) Copy the resulting .ipk out to /workspace
