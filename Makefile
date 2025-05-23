@@ -13,7 +13,7 @@ define Package/$(PKG_NAME)
   SECTION:=net
   CATEGORY:=Network
   TITLE:=SRT to RIST gateway
-  DEPENDS:=+libstdcpp +librist +srt +libavformat +libavcodec +libavutil +kmod-crypto-hash +kmod-crypto-core +libopenssl
+  DEPENDS:=+libstdcpp +librist +srt +libavformat +libavcodec +libavutil +libopenssl
 endef
 
 define Package/$(PKG_NAME)/description
@@ -22,7 +22,7 @@ endef
 
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) ./init.d/srt-to-rist-gateway $(PKG_BUILD_DIR)/
+	$(CP) ./init.d/* $(PKG_BUILD_DIR)/init.d/
 	$(CP) ./src/* $(PKG_BUILD_DIR)/
 	$(CP) ./CMakeLists.txt $(PKG_BUILD_DIR)/
 	$(CP) ./config.json $(PKG_BUILD_DIR)/
