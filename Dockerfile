@@ -33,6 +33,7 @@ RUN \
   ./scripts/feeds install -a
 
 # 6) Build your package
+RUN rm -rf build_dir staging_dir tmp
 RUN make defconfig && make package/srt-to-rist-gateway/compile V=s
 
 # 7) The resulting .ipk will land under:
