@@ -24,13 +24,6 @@ jobs:
           sudo apt install -y build-essential libncurses5-dev zlib1g-dev gawk git gettext \
             libssl-dev xsltproc wget unzip python3 rsync file pkg-config cmake
 
-      - name: Configure Git
-        run: |
-          git config --global http.postBuffer 524288000
-          git config --global core.compression 9
-          git config --global http.lowSpeedLimit 1000
-          git config --global http.lowSpeedTime 60
-
       - name: Download OpenWRT SDK
         run: |
           wget https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic/openwrt-sdk-23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64.tar.xz
@@ -41,61 +34,30 @@ jobs:
         run: |
           mkdir -p openwrt-sdk/package/{libs,multimedia}
           
-          function clone_with_retry() {
-            local repo=$1
-            local dir=$2
-            local max_attempts=5
-            local attempt=1
-            
-            while [ $attempt -le $max_attempts ]; do
-              echo "Cloning $repo (attempt $attempt/$max_attempts)"
-              if git clone --depth=1 "$repo" "$dir"; then
-                return 0
-              fi
-              attempt=$((attempt + 1))
-              sleep $((attempt * 5))
-            done
-            return 1
-          }
-          
           # Clone main packages repo
-          clone_with_retry https://github.com/openwrt/packages.git openwrt-packages || exit 1
+          git clone --depth=1 https://github.com/openwrt/packages.git openwrt-packages
           
-          # Clone OpenWRT core for OpenSSL and kernel modules
-          clone_with_retry https://github.com/openwrt/openwrt.git openwrt-core || exit 1
+          # Clone OpenWRT core for OpenSSL
+          git clone --depth=1 https://github.com/openwrt/openwrt.git openwrt-core
           cp -r openwrt-core/package/libs/openssl openwrt-sdk/package/libs/libopenssl
-          cp -r openwrt-core/package/kernel/linux openwrt-sdk/package/kernel/
           
           # Copy FFmpeg from packages
           cp -r openwrt-packages/multimedia/ffmpeg openwrt-sdk/package/multimedia/
           
           # Clone SRT package
-          clone_with_retry https://github.com/Haivision/srt.git openwrt-srt || exit 1
+          git clone --depth=1 https://github.com/Haivision/srt.git openwrt-srt
           cp -r openwrt-srt openwrt-sdk/package/libs/srt
           
           # Clone librist package
-          clone_with_retry https://code.videolan.org/rist/librist.git openwrt-librist || exit 1
+          git clone --depth=1 https://code.videolan.org/rist/librist.git openwrt-librist
           cp -r openwrt-librist openwrt-sdk/package/libs/librist
 
       - name: Update and install feeds
         run: |
           cd openwrt-sdk
-          
-          # Clean feeds first
           rm -rf feeds tmp
-          
-          # Update feeds with retry
-          for i in $(seq 1 5); do
-            if ./scripts/feeds update -a && ./scripts/feeds install -a; then
-              break
-            fi
-            echo "Feed update attempt $i failed, retrying..."
-            sleep $((i * 5))
-            if [ $i -eq 5 ]; then
-              echo "Failed to update feeds after 5 attempts"
-              exit 1
-            fi
-          done
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
 
       - name: Prepare package directory
         run: |
@@ -109,25 +71,14 @@ jobs:
           rm -rf openwrt-sdk/build_dir/target-* openwrt-sdk/staging_dir/target-*
           rm -rf openwrt-sdk/tmp
 
-      - name: Check system resources
-        run: |
-          free -h
-          df -h
-
       - name: Configure build
         run: |
           cd openwrt-sdk
           
-          # Create initial config
+          # Create minimal config
           cat > .config <<EOF
           CONFIG_TARGET_mediatek_filogic=y
           CONFIG_TARGET_mediatek_filogic_DEVICE_glinet_gl-mt3000=y
-          CONFIG_ALL_NONSHARED=y
-          CONFIG_ALL_KMODS=y
-          CONFIG_KERNEL_MODULES=y
-          CONFIG_PACKAGE_kmod-core=y
-          
-          # Package configuration
           CONFIG_PACKAGE_librist=m
           CONFIG_PACKAGE_srt=m
           CONFIG_PACKAGE_libavformat=m
@@ -135,80 +86,17 @@ jobs:
           CONFIG_PACKAGE_libavutil=m
           CONFIG_PACKAGE_libopenssl=m
           CONFIG_PACKAGE_srt-to-rist-gateway=m
-          
-          # Kernel configuration
-          CONFIG_KERNEL_BUILD_USER="OpenWRT"
-          CONFIG_KERNEL_BUILD_DOMAIN="openwrt.org"
-          CONFIG_KERNEL_KALLSYMS=y
-          CONFIG_KERNEL_DEBUG_KERNEL=y
-          CONFIG_KERNEL_DEBUG_INFO=y
-          CONFIG_KERNEL_AIO=y
-          CONFIG_KERNEL_MAGIC_SYSRQ=y
-          CONFIG_KERNEL_COREDUMP=y
-          CONFIG_KERNEL_ELF_CORE=y
-          CONFIG_KERNEL_PRINTK_TIME=y
-          CONFIG_KERNEL_MODULES=y
-          CONFIG_KERNEL_MODULESDIR="/lib/modules"
-          
-          # Required kernel modules
-          CONFIG_PACKAGE_kmod-crypto-hash=y
-          CONFIG_PACKAGE_kmod-crypto-crc32c=y
-          CONFIG_PACKAGE_kmod-lib-crc32c=y
-          CONFIG_PACKAGE_kmod-md-mod=y
-          CONFIG_PACKAGE_kmod-md-raid0=y
-          CONFIG_PACKAGE_kmod-md-raid1=y
-          CONFIG_PACKAGE_kmod-md-raid10=y
-          
-          # MD (Multiple Devices) support
-          CONFIG_BLK_DEV_MD=y
-          CONFIG_MD_AUTODETECT=y
-          CONFIG_MD_LINEAR=y
-          CONFIG_MD_RAID0=y
-          CONFIG_MD_RAID1=y
-          CONFIG_MD_RAID10=y
-          CONFIG_MD_RAID456=y
           EOF
           
           # Generate full config
           make defconfig
-          
-          # Create kernel config
-          mkdir -p target/linux/mediatek/filogic
-          cat > target/linux/mediatek/filogic/.config <<EOF
-          CONFIG_BLK_DEV_MD=y
-          CONFIG_MD_AUTODETECT=y
-          CONFIG_MD_LINEAR=y
-          CONFIG_MD_RAID0=y
-          CONFIG_MD_RAID1=y
-          CONFIG_MD_RAID10=y
-          CONFIG_MD_RAID456=y
-          EOF
-          
-          # Save config for debugging
-          cp .config config.debug
 
-      - name: Build kernel and prepare modules
-        run: |
-          cd openwrt-sdk
-          make tools/install -j$(nproc)
-          make toolchain/install -j$(nproc)
-          make target/linux/prepare -j$(nproc) V=s
-          make target/linux/compile -j$(nproc) V=s || {
-            echo "Kernel build failed. Checking logs..."
-            find logs -type f -exec cat {} \;
-            exit 1
-          }
-
-      - name: Build packages
+      - name: Build package
         run: |
           cd openwrt-sdk
           make package/srt-to-rist-gateway/compile V=s || {
             echo "Build failed. Checking logs..."
             find logs -type f -exec cat {} \;
-            if [ -f "config.debug" ]; then
-              echo "Debug config:"
-              cat config.debug
-            fi
             exit 1
           }
 
@@ -223,6 +111,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-logs
-          path: |
-            openwrt-sdk/logs
-            openwrt-sdk/config.debug
+          path: openwrt-sdk/logs
