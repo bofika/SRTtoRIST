@@ -33,9 +33,28 @@ jobs:
       - name: Clone OpenWRT packages repository
         run: |
           git clone --depth=1 https://github.com/openwrt/packages.git openwrt-packages
+          ls -la openwrt-packages/libs/
           mkdir -p openwrt-sdk/package/libs
-          cp -r openwrt-packages/libs/srt openwrt-sdk/package/libs/
-          cp -r openwrt-packages/libs/openssl openwrt-sdk/package/libs/libopenssl
+
+          # Copy SRT package
+          if [ ! -d "openwrt-packages/libs/srt" ]; then
+            echo "Error: SRT package not found"
+            exit 1
+          fi
+          cp -r openwrt-packages/libs/srt openwrt-sdk/package/libs/ || { echo "Failed to copy SRT package"; exit 1; }
+
+          # Copy OpenSSL package
+          if [ -d "openwrt-packages/libs/openssl" ]; then
+            cp -r openwrt-packages/libs/openssl openwrt-sdk/package/libs/libopenssl || { echo "Failed to copy OpenSSL package"; exit 1; }
+          elif [ -d "openwrt-packages/libs/libopenssl" ]; then
+            cp -r openwrt-packages/libs/libopenssl openwrt-sdk/package/libs/libopenssl || { echo "Failed to copy OpenSSL package"; exit 1; }
+          else
+            echo "Error: OpenSSL package not found in either libs/openssl or libs/libopenssl"
+            exit 1
+          fi
+
+          # Verify copied packages
+          ls -la openwrt-sdk/package/libs/
 
       - name: Prepare package directory
         run: |
@@ -56,11 +75,20 @@ jobs:
       - name: Build the package
         run: |
           cd openwrt-sdk
+          # Enable required packages
           echo "CONFIG_PACKAGE_libsrt=y" >> .config
           echo "CONFIG_PACKAGE_libopenssl=y" >> .config
+          
+          # Show config before build
+          cat .config
+          
           make defconfig
+          
+          # Build dependencies first
           make package/libs/libopenssl/compile V=s
           make package/libs/srt/compile V=s
+          
+          # Build main package
           make package/srt-to-rist-gateway/compile V=s
 
       - name: Debug .ipk location
