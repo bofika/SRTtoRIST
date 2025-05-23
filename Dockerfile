@@ -5,7 +5,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     build-essential ca-certificates wget git pkg-config cmake \
     libncurses5-dev libncursesw5-dev zlib1g-dev \
     gawk gettext libssl-dev xsltproc rsync file \
-    unzip python3 python3-distutils
+    unzip python3 python3-distutils python3-pkg-resources && \
+    ln -sf /usr/bin/python3 /usr/bin/python
 
 # 2) Create workspace and fetch the OpenWRT SDK
 WORKDIR /workspace
