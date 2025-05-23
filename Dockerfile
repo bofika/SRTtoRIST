@@ -15,22 +15,20 @@ RUN wget https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic
 
 # 3) Copy your package into the SDK
 RUN mkdir -p openwrt-sdk/package/srt-to-rist-gateway
-COPY src/           openwrt-sdk/package/srt-to-rist-gateway/src/
-COPY Makefile       openwrt-sdk/package/srt-to-rist-gateway/
-COPY CMakeLists.txt openwrt-sdk/package/srt-to-rist-gateway/
-COPY config.json    openwrt-sdk/package/srt-to-rist-gateway/
+COPY src/             openwrt-sdk/package/srt-to-rist-gateway/src/
+COPY Makefile         openwrt-sdk/package/srt-to-rist-gateway/
+COPY CMakeLists.txt   openwrt-sdk/package/srt-to-rist-gateway/
+COPY config.json      openwrt-sdk/package/srt-to-rist-gateway/
 # (optional) COPY init.d openwrt-sdk/package/srt-to-rist-gateway/init.d/
 
 # 4) Enter the SDK
 WORKDIR /workspace/openwrt-sdk
 
-# 5) Inject RIST, SRT & FFmpeg feeds, then update/install
+# 5) Inject only the librist feed, then update & install feeds
 RUN \
-  echo 'src-git librist https://github.com/Haivision/librist.git;openwrt' >> feeds.conf.default && \
-  echo 'src-git libsrt https://github.com/Haivision/srt.git;openwrt'       >> feeds.conf.default && \
-  echo 'src-git ffmpeg https://git.ffmpeg.org/ffmpeg.git;openwrt'        >> feeds.conf.default && \
+  echo 'src-git librist https://github.com/Haivision/librist.git' >> feeds.conf.default && \
   ./scripts/feeds update -a && \
-  ./scripts/feeds install librist libsrt ffmpeg && \
+  ./scripts/feeds install librist && \
   ./scripts/feeds install -a
 
 # 6) Build your package
