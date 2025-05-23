@@ -12,7 +12,6 @@ RUN apt-get update && \
       unzip python3 python3-distutils python3-pkg-resources musl-tools && \
     rm -rf /var/lib/apt/lists/*
 
-
 # 2) Download & unpack the OpenWRT SDK
 WORKDIR /workspace
 RUN wget https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic/openwrt-sdk-${OPENWRT_SDK_VERSION}.tar.xz && \
@@ -25,17 +24,25 @@ COPY . /workspace/openwrt-sdk/package/srt-to-rist-gateway/
 WORKDIR /workspace/openwrt-sdk
 
 # 4) Add external librist & SRT feeds, update & install them
-RUN echo 'src-git librist https://github.com/nanake/librist.git' >> feeds.conf.default && \
+RUN echo 'src-git packages https://git.openwrt.org/feed/packages.git' >> feeds.conf.default && \
+    echo 'src-git librist https://github.com/nanake/librist.git' >> feeds.conf.default && \
     echo 'src-git srt https://github.com/Haivision/srt.git' >> feeds.conf.default && \
     ./scripts/feeds update -a && \
-    ./scripts/feeds install -a librist srt libavformat libavcodec libavutil
+    ./scripts/feeds install -a
 
-# 5) Clean stale state
+# 5) Enable required packages in config
+RUN echo 'CONFIG_PACKAGE_librist=y' >> .config && \
+    echo 'CONFIG_PACKAGE_srt=y' >> .config && \
+    echo 'CONFIG_PACKAGE_libavformat=y' >> .config && \
+    echo 'CONFIG_PACKAGE_libavcodec=y' >> .config && \
+    echo 'CONFIG_PACKAGE_libavutil=y' >> .config
+
+# 6) Clean stale state
 RUN rm -rf build_dir staging_dir/target-* staging_dir/toolchain-*
 
-# 6) Build your package
+# 7) Build your package
 RUN make defconfig && \
     make package/srt-to-rist-gateway/compile V=s
 
-# 7) Copy the resulting .ipk out to /workspace
+# 8) Copy the resulting .ipk out to /workspace
 RUN cp bin/packages/*/*/srt-to-rist-gateway_*.ipk /workspace/
