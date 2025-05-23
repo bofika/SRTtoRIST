@@ -51,7 +51,7 @@ jobs:
             wget \
             unzip \
             python3 \
-            python3-distutils \
+            python3-pip \
             python3-setuptools \
             rsync \
             file \
@@ -64,6 +64,10 @@ jobs:
             flex \
             device-tree-compiler \
             ccache
+          
+          # Install Python dependencies via pip
+          python3 -m pip install --upgrade pip
+          python3 -m pip install setuptools wheel
 
       - name: Download OpenWRT SDK
         if: steps.cache.outputs.cache-hit != 'true'
