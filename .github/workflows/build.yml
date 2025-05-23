@@ -64,7 +64,6 @@ jobs:
           cd openwrt-sdk
           echo "CONFIG_PACKAGE_libsrt=y" >> .config
           make defconfig || { echo "make defconfig failed"; exit 1; }
-          [ -d staging_dir/target-aarch64_cortex-a53_musl ] || { echo "staging_dir not found"; exit 1; }
           export PKG_CONFIG_PATH="$(pwd)/staging_dir/target-aarch64_cortex-a53_musl/usr/lib/pkgconfig:$(pwd)/staging_dir/target-aarch64_cortex-a53_musl/usr/share/pkgconfig"
           make package/libs/srt/compile V=s || { echo "libsrt build failed"; exit 1; }
           make package/srt-to-rist-gateway/compile V=s || { echo "srt-to-rist-gateway build failed"; exit 1; }
