@@ -84,22 +84,18 @@ jobs:
           # Clean feeds first
           rm -rf feeds tmp
           
-          function update_feeds_with_retry() {
-            local max_attempts=5
-            local attempt=1
-            
-            while [ $attempt -le $max_attempts ]; do
-              echo "Updating feeds (attempt $attempt/$max_attempts)"
-              if ./scripts/feeds update -a && ./scripts/feeds install -a; then
-                return 0
-              fi
-              attempt=$((attempt + 1))
-              sleep $((attempt * 5))
-            done
-            return 1
-          }
-          
-          update_feeds_with_retry || exit 1
+          # Update feeds with retry
+          for i in $(seq 1 5); do
+            if ./scripts/feeds update -a && ./scripts/feeds install -a; then
+              break
+            fi
+            echo "Feed update attempt $i failed, retrying..."
+            sleep $((i * 5))
+            if [ $i -eq 5 ]; then
+              echo "Failed to update feeds after 5 attempts"
+              exit 1
+            fi
+          done
 
       - name: Prepare package directory
         run: |
@@ -128,6 +124,8 @@ jobs:
           CONFIG_TARGET_mediatek_filogic_DEVICE_glinet_gl-mt3000=y
           CONFIG_ALL_NONSHARED=y
           CONFIG_ALL_KMODS=y
+          
+          # Package configuration
           CONFIG_PACKAGE_librist=m
           CONFIG_PACKAGE_srt=m
           CONFIG_PACKAGE_libavformat=m
@@ -135,6 +133,15 @@ jobs:
           CONFIG_PACKAGE_libavutil=m
           CONFIG_PACKAGE_libopenssl=m
           CONFIG_PACKAGE_srt-to-rist-gateway=m
+          
+          # Explicitly disable problematic packages
+          CONFIG_PACKAGE_wpa-supplicant-mesh-openssl=n
+          CONFIG_PACKAGE_gnunet-utils=n
+          CONFIG_PACKAGE_openssl-util=n
+          CONFIG_PACKAGE_luci-ssl-nginx=n
+          CONFIG_PACKAGE_openvpn-easy-rsa=n
+          CONFIG_PACKAGE_nsd-control-setup=n
+          CONFIG_PACKAGE_freeswitch-util-gentls-cert=n
           
           # Kernel configuration
           CONFIG_KERNEL_BUILD_USER="OpenWRT"
@@ -148,53 +155,32 @@ jobs:
           CONFIG_KERNEL_ELF_CORE=y
           CONFIG_KERNEL_PRINTK_TIME=y
           
-          # MD support
-          CONFIG_KERNEL_MD=y
-          CONFIG_KERNEL_BLK_DEV_MD=y
-          CONFIG_KERNEL_MD_AUTODETECT=y
-          CONFIG_KERNEL_MD_LINEAR=y
-          CONFIG_KERNEL_MD_RAID0=y
-          CONFIG_KERNEL_MD_RAID1=y
-          CONFIG_KERNEL_MD_RAID10=y
-          CONFIG_KERNEL_MD_RAID456=y
-          CONFIG_KERNEL_MD_MULTIPATH=y
-          
           # Required kernel modules
-          CONFIG_PACKAGE_kmod-md-mod=y
-          CONFIG_PACKAGE_kmod-md-linear=y
-          CONFIG_PACKAGE_kmod-md-raid0=y
-          CONFIG_PACKAGE_kmod-md-raid1=y
-          CONFIG_PACKAGE_kmod-md-raid10=y
-          CONFIG_PACKAGE_kmod-md-raid456=y
           CONFIG_PACKAGE_kmod-crypto-hash=y
           CONFIG_PACKAGE_kmod-crypto-crc32c=y
           CONFIG_PACKAGE_kmod-lib-crc32c=y
-          
-          # Disable problematic packages
-          CONFIG_PACKAGE_wpa-supplicant-mesh-openssl=n
-          CONFIG_PACKAGE_gnunet-utils=n
-          CONFIG_PACKAGE_openssl-util=n
           EOF
           
           # Generate full config
           make defconfig
           
-          # Fix recursive dependencies
-          sed -i 's/depends on PACKAGE_/depends on !PACKAGE_/g' tmp/.config-package.in
+          # Process config-package.in to fix dependencies
+          if [ -f "tmp/.config-package.in" ]; then
+            # Remove self-dependencies
+            sed -i '/^config PACKAGE_.*$/{N;/\n.*depends on PACKAGE_.*$/d}' tmp/.config-package.in
+            
+            # Remove circular dependencies
+            sed -i '/select PACKAGE_.*$/d' tmp/.config-package.in
+            
+            # Add default n to problematic packages
+            sed -i 's/^config PACKAGE_\(wpa-supplicant-mesh-openssl\|gnunet-utils\|openssl-util\|luci-ssl-nginx\|openvpn-easy-rsa\|nsd-control-setup\|freeswitch-util-gentls-cert\)$/&\n\tdefault n/' tmp/.config-package.in
+          fi
           
           # Regenerate config after fixes
           make defconfig
           
           # Save config for debugging
           cp .config config.debug
-
-      - name: Build kernel and modules
-        run: |
-          cd openwrt-sdk
-          make target/linux/compile -j$(nproc) || {
-            echo "Kernel build failed"
-            exit 1
-          }
 
       - name: Build packages
         run: |
