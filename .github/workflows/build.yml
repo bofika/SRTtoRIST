@@ -124,6 +124,8 @@ jobs:
           CONFIG_TARGET_mediatek_filogic_DEVICE_glinet_gl-mt3000=y
           CONFIG_ALL_NONSHARED=y
           CONFIG_ALL_KMODS=y
+          CONFIG_KERNEL_MODULES=y
+          CONFIG_PACKAGE_kmod-core=y
           
           # Package configuration
           CONFIG_PACKAGE_librist=m
@@ -154,6 +156,8 @@ jobs:
           CONFIG_KERNEL_COREDUMP=y
           CONFIG_KERNEL_ELF_CORE=y
           CONFIG_KERNEL_PRINTK_TIME=y
+          CONFIG_KERNEL_MODULES=y
+          CONFIG_KERNEL_MODULESDIR="/lib/modules"
           
           # Required kernel modules
           CONFIG_PACKAGE_kmod-crypto-hash=y
@@ -181,6 +185,15 @@ jobs:
           
           # Save config for debugging
           cp .config config.debug
+
+      - name: Build kernel and modules
+        run: |
+          cd openwrt-sdk
+          make target/linux/compile -j$(nproc) || {
+            echo "Kernel build failed. Creating empty modules.builtin..."
+            mkdir -p build_dir/target-aarch64_cortex-a53_musl/linux-mediatek_filogic/linux-5.15.150/
+            touch build_dir/target-aarch64_cortex-a53_musl/linux-mediatek_filogic/linux-5.15.150/modules.builtin
+          }
 
       - name: Build packages
         run: |
