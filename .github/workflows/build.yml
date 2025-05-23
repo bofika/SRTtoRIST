@@ -77,6 +77,7 @@ jobs:
             echo "Build failed. Showing last 100 lines of logs:"
             tail -n 100 logs/package/srt-to-rist-gateway/compile.txt
             exit 1
+          }
 
       - name: Upload .ipk package
         uses: actions/upload-artifact@v4
