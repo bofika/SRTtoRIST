@@ -15,10 +15,12 @@ define Package/$(PKG_NAME)
   TITLE:=SRT to RIST gateway
   DEPENDS:=+libstdcpp +librist +srt +ffmpeg +libavformat +libavcodec +libavutil +libopenssl +libpthread
   URL:=https://github.com/yourusername/srt-to-rist-gateway
+  MAINTAINER:=Your Name <your.email@example.com>
 endef
 
 define Package/$(PKG_NAME)/description
   A gateway that receives SRT or RTSP video and sends it via RIST.
+  Supports both listener and caller modes for SRT input.
 endef
 
 define Build/Prepare
@@ -42,7 +44,7 @@ define Package/$(PKG_NAME)/install
 
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(if $(wildcard $(PKG_BUILD_DIR)/init.d/srt-to-rist-gateway),\
-		$(INSTALL_BIN) $(PKG_BUILD_DIR)/init.d/srt-to-rist-gateway $(1)/etc/init.d/srt-to-rist-gateway)
+		$(INSTALL_INIT) $(PKG_BUILD_DIR)/init.d/srt-to-rist-gateway $(1)/etc/init.d/srt-to-rist-gateway)
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
