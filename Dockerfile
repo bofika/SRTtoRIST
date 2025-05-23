@@ -7,9 +7,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       build-essential ca-certificates wget git pkg-config cmake \
-      libncurses5-dev libncursesw5-dev zlib1g-dev \
+      libncurses5-dev libncursesw5-dev zlib1g-dev flex bison \
       gawk gettext libssl-dev xsltproc rsync file \
-      unzip python3 python3-distutils python3-pkg-resources musl-tools && \
+      unzip python3 python3-distutils python3-pkg-resources musl-tools libelf-dev && \
     rm -rf /var/lib/apt/lists/*
 
 
@@ -27,7 +27,7 @@ WORKDIR /workspace/openwrt-sdk
 # 4) Add external librist & SRT feeds, update & install them
 RUN echo 'src-git librist https://github.com/nanake/librist.git' >> feeds.conf.default && \
     echo 'src-git srt https://github.com/Haivision/srt.git' >> feeds.conf.default && \
-    echo 'src-git ffmpeg https://github.com/openwrt/packages.git' >> feeds.conf.default && \
+    echo 'src-git packages https://github.com/openwrt/packages.git' >> feeds.conf.default && \
     ./scripts/feeds update -a && \
     ./scripts/feeds install -a
 
@@ -35,7 +35,9 @@ RUN echo 'src-git librist https://github.com/nanake/librist.git' >> feeds.conf.d
 RUN rm -rf build_dir staging_dir/target-* staging_dir/toolchain-*
 
 # 6) Build your package
-RUN make defconfig && make toolchain/install && \
+RUN make defconfig && \
+    make -j$(nproc) toolchain/install V=s && \
+    make -j$(nproc) tools/install V=s && \
     make package/srt-to-rist-gateway/compile V=s
 
 # 7) Copy the resulting .ipk out to /workspace
