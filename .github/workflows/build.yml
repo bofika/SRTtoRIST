@@ -42,7 +42,8 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y build-essential libncurses5-dev zlib1g-dev gawk git gettext \
-            libssl-dev xsltproc wget unzip python3 rsync file pkg-config cmake
+            libssl-dev xsltproc wget unzip python3 rsync file pkg-config cmake \
+            libtool automake autoconf bison flex texinfo help2man ccache
 
       - name: Download OpenWRT SDK
         if: steps.cache.outputs.cache-hit != 'true'
@@ -97,8 +98,10 @@ jobs:
 
       - name: Clean previous builds
         run: |
-          rm -rf openwrt-sdk/build_dir/target-* openwrt-sdk/staging_dir/target-*
-          rm -rf openwrt-sdk/tmp
+          cd openwrt-sdk
+          make clean
+          rm -rf build_dir/target-* staging_dir/target-*
+          rm -rf tmp
 
       - name: Configure build
         run: |
@@ -195,10 +198,22 @@ jobs:
           
           # Generate full config
           make defconfig
-          
-          # Build kernel and tools first
-          make tools/install -j$(nproc)
-          make toolchain/install -j$(nproc)
+
+      - name: Build tools and toolchain
+        run: |
+          cd openwrt-sdk
+          # Build tools with verbose output and single thread
+          make tools/install -j1 V=s || {
+            echo "Tools build failed. Checking logs..."
+            find logs -type f -exec sh -c 'echo "=== {} ==="; cat {}' \;
+            exit 1
+          }
+          # Build toolchain with verbose output and single thread
+          make toolchain/install -j1 V=s || {
+            echo "Toolchain build failed. Checking logs..."
+            find logs -type f -exec sh -c 'echo "=== {} ==="; cat {}' \;
+            exit 1
+          }
 
       - name: Build package
         run: |
