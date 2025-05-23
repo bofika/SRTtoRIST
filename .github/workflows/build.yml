@@ -62,9 +62,11 @@ jobs:
       - name: Build the package
         run: |
           cd openwrt-sdk
+          echo "CONFIG_PACKAGE_libopenssl=y" >> .config
           echo "CONFIG_PACKAGE_libsrt=y" >> .config
           make defconfig || { echo "make defconfig failed"; exit 1; }
           export PKG_CONFIG_PATH="$(pwd)/staging_dir/target-aarch64_cortex-a53_musl/usr/lib/pkgconfig:$(pwd)/staging_dir/target-aarch64_cortex-a53_musl/usr/share/pkgconfig"
+          make package/libs/openssl/compile V=s || { echo "openssl build failed"; exit 1; }
           make package/libs/srt/compile V=s || { echo "libsrt build failed"; exit 1; }
           make package/srt-to-rist-gateway/compile V=s || { echo "srt-to-rist-gateway build failed"; exit 1; }
 
