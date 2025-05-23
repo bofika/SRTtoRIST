@@ -74,11 +74,17 @@ jobs:
       - name: Build the package
         run: |
           cd openwrt-sdk
+          
+          # Configure Git for large repos
+          git config --global http.postBuffer 524288000
+          
           # Create initial config
           make defconfig
           
           # Enable required packages and kernel modules
           cat >> .config <<EOF
+          CONFIG_ALL_NONSHARED=y
+          CONFIG_ALL_KMODS=y
           CONFIG_PACKAGE_librist=y
           CONFIG_PACKAGE_srt=y
           CONFIG_PACKAGE_libavformat=y
@@ -95,12 +101,14 @@ jobs:
           
           # Refresh config and build kernel first
           make defconfig
-          make target/linux/compile -j$(nproc) V=s || {
-            echo "Kernel build failed"
+          
+          # Build all packages first to resolve dependencies
+          make package/compile -j$(nproc) V=s || {
+            echo "Package compilation failed"
             exit 1
           }
           
-          # Build package and dependencies
+          # Build our package
           make package/srt-to-rist-gateway/compile -j$(nproc) V=s || {
             echo "Package build failed"
             exit 1
