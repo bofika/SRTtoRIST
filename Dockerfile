@@ -24,11 +24,11 @@ COPY config.json      openwrt-sdk/package/srt-to-rist-gateway/
 # 4) Enter the SDK
 WORKDIR /workspace/openwrt-sdk
 
-# 5) Inject librist, update all feeds, then install SRT + RIST before building
+# 5) Inject only the librist feed, update all feeds, then install RIST & SRT
 RUN \
   echo 'src-git librist https://github.com/Haivision/librist.git' >> feeds.conf.default && \
   ./scripts/feeds update -a && \
-  ./scripts/feeds install librist libsrt && \
+  ./scripts/feeds install librist srt && \
   ./scripts/feeds install -a
 
 # 6) Build your package
