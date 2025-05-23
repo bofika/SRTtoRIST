@@ -28,8 +28,8 @@ jobs:
       - name: Clone OpenWRT packages repository
         run: |
           git clone --depth=1 https://github.com/openwrt/packages.git openwrt-packages
-          mkdir -p openwrt-sdk/feeds/packages/libs
-          cp -r openwrt-packages/libs/srt openwrt-sdk/feeds/packages/libs/
+          mkdir -p openwrt-sdk/package/libs
+          cp -r openwrt-packages/libs/srt openwrt-sdk/package/libs/
 
       - name: Prepare package directory
         run: |
@@ -45,17 +45,15 @@ jobs:
       - name: Build the package
         run: |
           cd openwrt-sdk
-          # Configure local feeds
-          echo "src-link packages ./feeds/packages" > feeds.conf.default
-
-          # Configure build
+          # Enable libsrt in config
+          echo "CONFIG_PACKAGE_libsrt=y" >> .config
           make defconfig
           
           # Set PKG_CONFIG_PATH to find .pc files
           export PKG_CONFIG_PATH="$(pwd)/staging_dir/target-aarch64_cortex-a53_musl/usr/lib/pkgconfig:$(pwd)/staging_dir/target-aarch64_cortex-a53_musl/usr/share/pkgconfig"
           
           # Build libsrt first
-          make package/libs/srt/compile V=sc
+          make package/libs/srt/compile V=s
           
           # Build our package
           make package/srt-to-rist-gateway/compile V=sc
