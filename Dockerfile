@@ -16,21 +16,27 @@ RUN apt-get update && \
 # 2) Download & unpack the OpenWRT SDK
 WORKDIR /workspace
 RUN wget https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic/openwrt-sdk-${OPENWRT_SDK_VERSION}.tar.xz && \
-    tar xf openwrt-sdk-${OPENWRT_SDK_VERSION}.tar.xz && \ 
-    mv openwrt-sdk-${OPENWRT_SDK_VERSION} openwrt-sdk && \
-    mkdir -p openwrt-sdk/package/srt-to-rist-gateway
+    tar xf openwrt-sdk-${OPENWRT_SDK_VERSION}.tar.xz && \
+    mv openwrt-sdk-${OPENWRT_SDK_VERSION} openwrt-sdk
 
-# 3) Copy in your package into the SDK
-COPY CMakeLists.txt Makefile config.json /workspace/openwrt-sdk/package/srt-to-rist-gateway/
-COPY src/ /workspace/openwrt-sdk/package/srt-to-rist-gateway/src/
-COPY init.d/ /workspace/openwrt-sdk/package/srt-to-rist-gateway/init.d/
+# 3) Configure feeds
+RUN cd openwrt-sdk && \
+    echo 'src-git packages https://github.com/openwrt/packages.git' > feeds.conf.default && \
+    echo 'src-git librist https://github.com/nanake/librist-openwrt.git' >> feeds.conf.default && \
+    echo 'src-git srt https://github.com/openwrt/packages.git' >> feeds.conf.default && \
+    ./scripts/feeds update -a && \
+    ./scripts/feeds install -a
+
+# 4) Copy in your package into the SDK
+RUN mkdir -p openwrt-sdk/package/srt-to-rist-gateway
+COPY . openwrt-sdk/package/srt-to-rist-gateway/
 
 WORKDIR /workspace/openwrt-sdk
 
-# 4) Build your package
+# 5) Build your package
 RUN make defconfig && \
     make -j$(nproc) package/srt-to-rist-gateway/compile V=s
 
-# 5) Copy the resulting .ipk out to /workspace
+# 6) Copy the resulting .ipk out to /workspace
 RUN cp bin/packages/*/*/srt-to-rist-gateway_*.ipk /workspace/ || \
     cp bin/targets/*/*/packages/srt-to-rist-gateway_*.ipk /workspace/
