@@ -118,7 +118,7 @@ jobs:
         run: |
           cd openwrt-sdk
           
-          # Create base config
+          # Create initial config
           cat > .config <<EOF
           CONFIG_TARGET_mediatek_filogic=y
           CONFIG_TARGET_mediatek_filogic_DEVICE_glinet_gl-mt3000=y
@@ -135,15 +135,6 @@ jobs:
           CONFIG_PACKAGE_libavutil=m
           CONFIG_PACKAGE_libopenssl=m
           CONFIG_PACKAGE_srt-to-rist-gateway=m
-          
-          # Explicitly disable problematic packages
-          CONFIG_PACKAGE_wpa-supplicant-mesh-openssl=n
-          CONFIG_PACKAGE_gnunet-utils=n
-          CONFIG_PACKAGE_openssl-util=n
-          CONFIG_PACKAGE_luci-ssl-nginx=n
-          CONFIG_PACKAGE_openvpn-easy-rsa=n
-          CONFIG_PACKAGE_nsd-control-setup=n
-          CONFIG_PACKAGE_freeswitch-util-gentls-cert=n
           
           # Kernel configuration
           CONFIG_KERNEL_BUILD_USER="OpenWRT"
@@ -181,29 +172,26 @@ jobs:
           # Generate full config
           make defconfig
           
-          # Fix recursive dependencies in config-package.in
-          if [ -f "tmp/.config-package.in" ]; then
-            # Remove all self-dependencies
-            sed -i '/depends on PACKAGE_.*$/d' tmp/.config-package.in
-            
-            # Remove all select statements to prevent circular deps
-            sed -i '/select PACKAGE_.*$/d' tmp/.config-package.in
-            
-            # Set default n for problematic packages
-            for pkg in wpa-supplicant-mesh-openssl gnunet-utils openssl-util luci-ssl-nginx openvpn-easy-rsa nsd-control-setup freeswitch-util-gentls-cert; do
-              sed -i "/^config PACKAGE_${pkg}$/a\\tdefault n" tmp/.config-package.in
-            done
-          fi
-          
-          # Regenerate config after fixes
-          make defconfig
+          # Create kernel config
+          mkdir -p target/linux/mediatek/filogic
+          cat > target/linux/mediatek/filogic/.config <<EOF
+          CONFIG_BLK_DEV_MD=y
+          CONFIG_MD_AUTODETECT=y
+          CONFIG_MD_LINEAR=y
+          CONFIG_MD_RAID0=y
+          CONFIG_MD_RAID1=y
+          CONFIG_MD_RAID10=y
+          CONFIG_MD_RAID456=y
+          EOF
           
           # Save config for debugging
           cp .config config.debug
 
-      - name: Build kernel
+      - name: Build kernel and prepare modules
         run: |
           cd openwrt-sdk
+          make tools/install -j$(nproc)
+          make toolchain/install -j$(nproc)
           make target/linux/prepare -j$(nproc) V=s
           make target/linux/compile -j$(nproc) V=s || {
             echo "Kernel build failed. Checking logs..."
