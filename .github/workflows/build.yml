@@ -181,16 +181,18 @@ jobs:
           # Generate full config
           make defconfig
           
-          # Process config-package.in to fix dependencies
+          # Fix recursive dependencies in config-package.in
           if [ -f "tmp/.config-package.in" ]; then
-            # Remove self-dependencies
-            sed -i '/^config PACKAGE_.*$/{N;/\n.*depends on PACKAGE_.*$/d}' tmp/.config-package.in
+            # Remove all self-dependencies
+            sed -i '/depends on PACKAGE_.*$/d' tmp/.config-package.in
             
-            # Remove circular dependencies
+            # Remove all select statements to prevent circular deps
             sed -i '/select PACKAGE_.*$/d' tmp/.config-package.in
             
-            # Add default n to problematic packages
-            sed -i 's/^config PACKAGE_\(wpa-supplicant-mesh-openssl\|gnunet-utils\|openssl-util\|luci-ssl-nginx\|openvpn-easy-rsa\|nsd-control-setup\|freeswitch-util-gentls-cert\)$/&\n\tdefault n/' tmp/.config-package.in
+            # Set default n for problematic packages
+            for pkg in wpa-supplicant-mesh-openssl gnunet-utils openssl-util luci-ssl-nginx openvpn-easy-rsa nsd-control-setup freeswitch-util-gentls-cert; do
+              sed -i "/^config PACKAGE_${pkg}$/a\\tdefault n" tmp/.config-package.in
+            done
           fi
           
           # Regenerate config after fixes
@@ -199,14 +201,13 @@ jobs:
           # Save config for debugging
           cp .config config.debug
 
-      - name: Build kernel and modules
+      - name: Build kernel
         run: |
           cd openwrt-sdk
+          make target/linux/prepare -j$(nproc) V=s
           make target/linux/compile -j$(nproc) V=s || {
             echo "Kernel build failed. Checking logs..."
-            if [ -f "logs/target/linux/compile.txt" ]; then
-              cat logs/target/linux/compile.txt
-            fi
+            find logs -type f -exec cat {} \;
             exit 1
           }
 
@@ -215,9 +216,7 @@ jobs:
           cd openwrt-sdk
           make package/srt-to-rist-gateway/compile V=s || {
             echo "Build failed. Checking logs..."
-            if [ -f "logs/package/srt-to-rist-gateway/compile.txt" ]; then
-              cat logs/package/srt-to-rist-gateway/compile.txt
-            fi
+            find logs -type f -exec cat {} \;
             if [ -f "config.debug" ]; then
               echo "Debug config:"
               cat config.debug
