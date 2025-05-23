@@ -163,6 +163,19 @@ jobs:
           CONFIG_PACKAGE_kmod-crypto-hash=y
           CONFIG_PACKAGE_kmod-crypto-crc32c=y
           CONFIG_PACKAGE_kmod-lib-crc32c=y
+          CONFIG_PACKAGE_kmod-md-mod=y
+          CONFIG_PACKAGE_kmod-md-raid0=y
+          CONFIG_PACKAGE_kmod-md-raid1=y
+          CONFIG_PACKAGE_kmod-md-raid10=y
+          
+          # MD (Multiple Devices) support
+          CONFIG_BLK_DEV_MD=y
+          CONFIG_MD_AUTODETECT=y
+          CONFIG_MD_LINEAR=y
+          CONFIG_MD_RAID0=y
+          CONFIG_MD_RAID1=y
+          CONFIG_MD_RAID10=y
+          CONFIG_MD_RAID456=y
           EOF
           
           # Generate full config
@@ -189,10 +202,12 @@ jobs:
       - name: Build kernel and modules
         run: |
           cd openwrt-sdk
-          make target/linux/compile -j$(nproc) || {
-            echo "Kernel build failed. Creating empty modules.builtin..."
-            mkdir -p build_dir/target-aarch64_cortex-a53_musl/linux-mediatek_filogic/linux-5.15.150/
-            touch build_dir/target-aarch64_cortex-a53_musl/linux-mediatek_filogic/linux-5.15.150/modules.builtin
+          make target/linux/compile -j$(nproc) V=s || {
+            echo "Kernel build failed. Checking logs..."
+            if [ -f "logs/target/linux/compile.txt" ]; then
+              cat logs/target/linux/compile.txt
+            fi
+            exit 1
           }
 
       - name: Build packages
