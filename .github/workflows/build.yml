@@ -28,8 +28,8 @@ jobs:
       - name: Clone OpenWRT packages repository
         run: |
           git clone --depth=1 https://github.com/openwrt/packages.git openwrt-packages
-          mkdir -p openwrt-sdk/package/libs
-          cp -r openwrt-packages/libs/srt openwrt-sdk/package/libs/
+          mkdir -p openwrt-sdk/feeds/packages/libs
+          cp -r openwrt-packages/libs/srt openwrt-sdk/feeds/packages/libs/
 
       - name: Prepare package directory
         run: |
@@ -45,12 +45,12 @@ jobs:
       - name: Build the package
         run: |
           cd openwrt-sdk
-          # Add feeds
-          echo "src-git packages https://github.com/openwrt/packages.git" >> feeds.conf.default
-          
-          # Update and install feeds
+          # Configure local feeds
+          echo "src-link packages ./feeds/packages" > feeds.conf.default
+
+          # Update feeds and install srt
           ./scripts/feeds update -a
-          ./scripts/feeds install -a
+          ./scripts/feeds install srt
           
           # Configure build
           make defconfig
