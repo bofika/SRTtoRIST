@@ -45,11 +45,23 @@ jobs:
       - name: Build the package
         run: |
           cd openwrt-sdk
-          echo "src-link packages /home/runner/work/srt-to-rist-gateway/srt-to-rist-gateway/openwrt-packages" >> feeds.conf.default
+          # Add feeds
+          echo "src-git packages https://github.com/openwrt/packages.git" >> feeds.conf.default
+          
+          # Update and install feeds
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+          
+          # Configure build
           make defconfig
+          
+          # Set PKG_CONFIG_PATH to find .pc files
+          export PKG_CONFIG_PATH="$(pwd)/staging_dir/target-aarch64_cortex-a53_musl/usr/lib/pkgconfig:$(pwd)/staging_dir/target-aarch64_cortex-a53_musl/usr/share/pkgconfig"
+          
+          # Build libsrt first
           make package/srt/compile V=sc
+          
+          # Build our package
           make package/srt-to-rist-gateway/compile V=sc
 
       - name: Upload .ipk package
