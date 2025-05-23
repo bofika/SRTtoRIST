@@ -29,7 +29,7 @@ jobs:
         run: |
           mkdir -p openwrt-sdk/package/srt-to-rist-gateway
           rsync -av src/ openwrt-sdk/package/srt-to-rist-gateway/src/
-          rsync -av CMakeLists.txt Makefile config.json README.md openwrt-sdk/package/srt-to-rist-gateway/
+          rsync -av CMakeLists.txt Makefile config.json openwrt-sdk/package/srt-to-rist-gateway/
           if [ -d "init.d" ]; then rsync -av init.d openwrt-sdk/package/srt-to-rist-gateway/; fi
 
       - name: Clean previous builds
