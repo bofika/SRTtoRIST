@@ -25,6 +25,12 @@ jobs:
           tar -xf openwrt-sdk-23.05.3-mediatek-filogic_*.tar.xz
           mv openwrt-sdk-*/ openwrt-sdk
 
+      - name: Clone OpenWRT packages repository
+        run: |
+          git clone --depth=1 https://github.com/openwrt/packages.git openwrt-packages
+          mkdir -p openwrt-sdk/package/libs
+          cp -r openwrt-packages/libs/srt openwrt-sdk/package/libs/
+
       - name: Prepare package directory
         run: |
           mkdir -p openwrt-sdk/package/srt-to-rist-gateway
@@ -39,7 +45,11 @@ jobs:
       - name: Build the package
         run: |
           cd openwrt-sdk
+          echo "src-link packages /home/runner/work/srt-to-rist-gateway/srt-to-rist-gateway/openwrt-packages" >> feeds.conf.default
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
           make defconfig
+          make package/srt/compile V=sc
           make package/srt-to-rist-gateway/compile V=sc
 
       - name: Upload .ipk package
