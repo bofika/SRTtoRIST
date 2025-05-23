@@ -77,21 +77,32 @@ jobs:
           # Create initial config
           make defconfig
           
-          # Enable required packages
-          echo 'CONFIG_PACKAGE_librist=y' >> .config
-          echo 'CONFIG_PACKAGE_srt=y' >> .config
-          echo 'CONFIG_PACKAGE_libavformat=y' >> .config
-          echo 'CONFIG_PACKAGE_libavcodec=y' >> .config
-          echo 'CONFIG_PACKAGE_libavutil=y' >> .config
-          echo 'CONFIG_PACKAGE_libopenssl=y' >> .config
-          echo 'CONFIG_PACKAGE_srt-to-rist-gateway=y' >> .config
+          # Enable required packages and kernel modules
+          cat >> .config <<EOF
+          CONFIG_PACKAGE_librist=y
+          CONFIG_PACKAGE_srt=y
+          CONFIG_PACKAGE_libavformat=y
+          CONFIG_PACKAGE_libavcodec=y
+          CONFIG_PACKAGE_libavutil=y
+          CONFIG_PACKAGE_libopenssl=y
+          CONFIG_PACKAGE_srt-to-rist-gateway=y
+          CONFIG_KERNEL_MD=y
+          CONFIG_KERNEL_MD_RAID0=y
+          CONFIG_KERNEL_MD_RAID1=y
+          CONFIG_KERNEL_MD_RAID10=y
+          CONFIG_KERNEL_MD_MULTIPATH=y
+          EOF
           
-          # Refresh config
+          # Refresh config and build kernel first
           make defconfig
+          make target/linux/compile -j$(nproc) V=s || {
+            echo "Kernel build failed"
+            exit 1
+          }
           
           # Build package and dependencies
-          make package/srt-to-rist-gateway/compile -j$(nproc) V=sc || {
-            echo "Build failed"
+          make package/srt-to-rist-gateway/compile -j$(nproc) V=s || {
+            echo "Package build failed"
             exit 1
           }
 
