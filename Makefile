@@ -13,7 +13,8 @@ define Package/$(PKG_NAME)
   SECTION:=net
   CATEGORY:=Network
   TITLE:=SRT to RIST gateway
-  DEPENDS:=+libopenssl +librist +srt +libavformat +libavcodec +libavutil +libstdcpp +kmod-crypto-hash +kmod-crypto-core
+  DEPENDS:=+libstdcpp +librist +srt +libavformat +libavcodec +libavutil +kmod-crypto-hash +kmod-crypto-core
+  EXTRA_DEPENDS:=libopenssl (>= 3.0.0)
 endef
 
 define Package/$(PKG_NAME)/description
