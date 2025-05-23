@@ -33,11 +33,14 @@ jobs:
       - name: Clone OpenWRT packages repository
         run: |
           git clone --depth=1 https://github.com/openwrt/packages.git openwrt-packages
-          mkdir -p openwrt-sdk/package/libs
+          mkdir -p openwrt-sdk/package/{libs,multimedia}
 
           # Clone OpenWRT core for OpenSSL
           git clone --depth=1 https://github.com/openwrt/openwrt.git openwrt-core
           cp -r openwrt-core/package/libs/openssl openwrt-sdk/package/libs/libopenssl
+
+          # Copy FFmpeg from packages
+          cp -r openwrt-packages/multimedia/ffmpeg openwrt-sdk/package/multimedia/
 
           # Clone SRT package
           git clone --depth=1 https://github.com/Haivision/srt.git openwrt-srt
@@ -73,6 +76,9 @@ jobs:
           cd openwrt-sdk
           mkdir -p logs/package/srt-to-rist-gateway
           make defconfig
+          make package/ffmpeg/compile V=s
+          make package/srt/compile V=s
+          make package/librist/compile V=s
           make package/srt-to-rist-gateway/compile V=s CONFIG_PACKAGE_srt-to-rist-gateway=y 2>&1 | tee logs/package/srt-to-rist-gateway/compile.txt || {
             echo "Build failed. Showing last 100 lines of logs:"
             tail -n 100 logs/package/srt-to-rist-gateway/compile.txt
