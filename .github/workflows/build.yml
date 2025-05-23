@@ -48,10 +48,6 @@ jobs:
           # Configure local feeds
           echo "src-link packages ./feeds/packages" > feeds.conf.default
 
-          # Update feeds and install srt
-          ./scripts/feeds update -a
-          ./scripts/feeds install srt
-          
           # Configure build
           make defconfig
           
@@ -59,7 +55,7 @@ jobs:
           export PKG_CONFIG_PATH="$(pwd)/staging_dir/target-aarch64_cortex-a53_musl/usr/lib/pkgconfig:$(pwd)/staging_dir/target-aarch64_cortex-a53_musl/usr/share/pkgconfig"
           
           # Build libsrt first
-          make package/feeds/packages/srt/compile V=sc
+          make package/libs/srt/compile V=sc
           
           # Build our package
           make package/srt-to-rist-gateway/compile V=sc
