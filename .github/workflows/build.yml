@@ -20,38 +20,31 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          sudo apt update || { echo "apt update failed"; exit 1; }
+          sudo apt update
           sudo apt install -y build-essential libncurses5-dev zlib1g-dev gawk git gettext \
-            libssl-dev xsltproc wget unzip python3 rsync file pkg-config cmake || { echo "apt install failed"; exit 1; }
+            libssl-dev xsltproc wget unzip python3 rsync file pkg-config cmake
 
       - name: Download OpenWRT SDK
         run: |
-          wget https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic/openwrt-sdk-23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64.tar.xz || { echo "Failed to download SDK"; exit 1; }
-          tar -xf openwrt-sdk-23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64.tar.xz || { echo "Failed to extract SDK"; exit 1; }
-          mv openwrt-sdk-23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64 openwrt-sdk || { echo "Failed to rename SDK directory"; exit 1; }
+          wget https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic/openwrt-sdk-23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+          tar -xf openwrt-sdk-23.05.3-mediatek-filogic_*.tar.xz
+          mv openwrt-sdk-*/ openwrt-sdk
 
       - name: Clone OpenWRT packages repository
         run: |
-          git clone --depth=1 https://github.com/openwrt/packages.git openwrt-packages || { echo "Failed to clone packages"; exit 1; }
+          git clone --depth=1 https://github.com/openwrt/packages.git openwrt-packages
           mkdir -p openwrt-sdk/package/libs
-          [ -d openwrt-packages/libs/srt ] || { echo "libsrt not found"; exit 1; }
-          cp -r openwrt-packages/libs/srt openwrt-sdk/package/libs/ || { echo "Failed to copy libsrt"; exit 1; }
+          cp -r openwrt-packages/libs/srt openwrt-sdk/package/libs/
 
       - name: Prepare package directory
         run: |
           mkdir -p openwrt-sdk/package/srt-to-rist-gateway
-          [ -d src/ ] || { echo "src/ directory missing"; exit 1; }
-          [ -f CMakeLists.txt ] || { echo "CMakeLists.txt missing"; exit 1; }
-          [ -f Makefile ] || { echo "Makefile missing"; exit 1; }
-          [ -f config.json ] || { echo "config.json missing"; exit 1; }
           rsync -av src/ openwrt-sdk/package/srt-to-rist-gateway/src/
           rsync -av CMakeLists.txt Makefile config.json openwrt-sdk/package/srt-to-rist-gateway/
           if [ -d "init.d" ]; then rsync -av init.d openwrt-sdk/package/srt-to-rist-gateway/; fi
 
       - name: Clean previous builds
         run: |
-          ls -la openwrt-sdk/build_dir/ || echo "No build_dir found"
-          ls -la openwrt-sdk/staging_dir/ || echo "No staging_dir found"
           rm -rf openwrt-sdk/build_dir/target-* openwrt-sdk/staging_dir/target-*
 
       - name: Check system resources
@@ -62,19 +55,19 @@ jobs:
       - name: Build the package
         run: |
           cd openwrt-sdk
-          echo "CONFIG_PACKAGE_libopenssl=y" >> .config
           echo "CONFIG_PACKAGE_libsrt=y" >> .config
-          make defconfig || { echo "make defconfig failed"; exit 1; }
-          export PKG_CONFIG_PATH="$(pwd)/staging_dir/target-aarch64_cortex-a53_musl/usr/lib/pkgconfig:$(pwd)/staging_dir/target-aarch64_cortex-a53_musl/usr/share/pkgconfig"
-          make package/libs/openssl/compile V=s || { echo "openssl build failed"; exit 1; }
-          make package/libs/srt/compile V=s || { echo "libsrt build failed"; exit 1; }
-          make package/srt-to-rist-gateway/compile V=s || { echo "srt-to-rist-gateway build failed"; exit 1; }
+          echo "CONFIG_PACKAGE_libopenssl=y" >> .config
+          make defconfig
+          make package/libs/libopenssl/compile V=s
+          make package/libs/srt/compile V=s
+          make package/srt-to-rist-gateway/compile V=s
 
       - name: Debug .ipk location
         run: |
-          find openwrt-sdk/bin/packages -name "srt-to-rist-gateway_*.ipk" || echo "No .ipk file found"
+          find openwrt-sdk/bin/packages -name "srt-to-rist-gateway_*.ipk"
 
       - name: Upload .ipk package
         uses: actions/upload-artifact@v4
         with:
           name: srt-to-rist-gateway-ipk
+          path: openwrt-sdk/bin/packages/*/*/srt-to-rist-gateway_*.ipk
