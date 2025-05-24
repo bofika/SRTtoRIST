@@ -12,11 +12,12 @@ jobs:
     env:
       TERM: xterm
       FORCE_UNSAFE_CONFIGURE: 1
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
     steps:
       - name: Checkout repository
         uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
 
-      - name: Cache OpenWRT SDK
+      - name: Cache OpenWRT SDK and ccache
         uses: actions/cache@v3
         with:
           path: |
@@ -25,23 +26,25 @@ jobs:
             openwrt-core
             openwrt-srt
             openwrt-librist
-          key: ${{ runner.os }}-openwrt-sdk-23.05.3-${{ hashFiles('**/*.mk', '**/*.cmake', 'Makefile', 'feeds.conf') }}
+            .ccache
+          key: ${{ runner.os }}-openwrt-sdk-23.05.3-${{ hashFiles('**/*.mk', '**/*.cmake', 'Makefile') }}-${{ github.sha }}
           restore-keys: |
+            ${{ runner.os }}-openwrt-sdk-23.05.3-${{ hashFiles('**/*.mk', '**/*.cmake', 'Makefile') }}-
             ${{ runner.os }}-openwrt-sdk-23.05.3-
 
       - name: Free disk space
         run: |
-          df -h
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost /usr/lib/jvm
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
           df -h
 
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get install -y --no-install-recommends \
             build-essential \
             libncurses5-dev \
-            libncursesw5-dev \
             zlib1g-dev \
             gawk \
             git \
@@ -52,59 +55,42 @@ jobs:
             unzip \
             python3 \
             python3-pip \
-            python3-setuptools \
             rsync \
             file \
             pkg-config \
             cmake \
-            libtool \
-            automake \
-            autoconf \
-            bison \
-            flex \
-            device-tree-compiler \
             ccache
           
-          # Install Python dependencies via pip
           python3 -m pip install --upgrade pip
           python3 -m pip install setuptools wheel
 
-      - name: Download OpenWRT SDK
+      - name: Download and setup OpenWRT SDK
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          wget https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic/openwrt-sdk-23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64.tar.xz
-          tar -xf openwrt-sdk-23.05.3-mediatek-filogic_*.tar.xz
+          wget -q https://downloads.openwrt.org/releases/23.05.3/targets/mediatek/filogic/openwrt-sdk-23.05.3-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+          tar xf openwrt-sdk-23.05.3-mediatek-filogic_*.tar.xz
           mv openwrt-sdk-*/ openwrt-sdk
-
-      - name: Clone OpenWRT packages repository
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
+          rm -f openwrt-sdk-*.tar.xz
+          
           mkdir -p openwrt-sdk/package/{libs,multimedia}
           
-          # Clone main packages repo with specific branch
-          git clone --depth=1 --branch openwrt-23.05 https://github.com/openwrt/packages.git openwrt-packages || exit 1
+          # Clone repositories in parallel
+          git clone --depth=1 --branch openwrt-23.05 https://github.com/openwrt/packages.git openwrt-packages &
+          git clone --depth=1 --branch openwrt-23.05 https://github.com/openwrt/openwrt.git openwrt-core &
+          git clone --depth=1 https://github.com/Haivision/srt.git openwrt-srt &
+          git clone --depth=1 https://code.videolan.org/rist/librist.git openwrt-librist &
+          wait
           
-          # Clone OpenWRT core for OpenSSL
-          git clone --depth=1 --branch openwrt-23.05 https://github.com/openwrt/openwrt.git openwrt-core || exit 1
           cp -r openwrt-core/package/libs/openssl openwrt-sdk/package/libs/libopenssl
-          
-          # Copy FFmpeg from packages
           cp -r openwrt-packages/multimedia/ffmpeg openwrt-sdk/package/multimedia/
-          
-          # Clone SRT package
-          git clone --depth=1 https://github.com/Haivision/srt.git openwrt-srt || exit 1
           cp -r openwrt-srt openwrt-sdk/package/libs/srt
-          
-          # Clone librist package
-          git clone --depth=1 https://code.videolan.org/rist/librist.git openwrt-librist || exit 1
           cp -r openwrt-librist openwrt-sdk/package/libs/librist
 
       - name: Update and install feeds
         run: |
           cd openwrt-sdk
-          # Clean existing feeds
           rm -rf feeds tmp
-          # Update feeds.conf with stable branches
+          
           cat > feeds.conf <<EOF
           src-git packages https://github.com/openwrt/packages.git;openwrt-23.05
           src-git luci https://github.com/openwrt/luci.git;openwrt-23.05
@@ -112,75 +98,53 @@ jobs:
           src-git telephony https://github.com/openwrt/telephony.git;openwrt-23.05
           EOF
           
-          # Update and install feeds
-          ./scripts/feeds update -a || exit 1
-          ./scripts/feeds clean
-          ./scripts/feeds install -a -f || exit 1
-          
-          # Install specific packages
-          ./scripts/feeds install ffmpeg
-          ./scripts/feeds install libavcodec
-          ./scripts/feeds install libavutil
-          ./scripts/feeds install libavformat
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a -f
+          ./scripts/feeds install ffmpeg libavcodec libavutil libavformat
 
       - name: Prepare package directory
         run: |
           mkdir -p openwrt-sdk/package/srt-to-rist-gateway
-          rsync -av src/ openwrt-sdk/package/srt-to-rist-gateway/src/
-          rsync -av CMakeLists.txt Makefile config.json openwrt-sdk/package/srt-to-rist-gateway/
-          if [ -d "init.d" ]; then rsync -av init.d openwrt-sdk/package/srt-to-rist-gateway/; fi
-
-      - name: Clean previous builds
-        run: |
-          cd openwrt-sdk
-          make clean
-          rm -rf build_dir/target-* staging_dir/target-*
-          rm -rf tmp
+          rsync -a --delete src/ openwrt-sdk/package/srt-to-rist-gateway/src/
+          rsync -a CMakeLists.txt Makefile config.json openwrt-sdk/package/srt-to-rist-gateway/
+          if [ -d "init.d" ]; then rsync -a init.d openwrt-sdk/package/srt-to-rist-gateway/; fi
 
       - name: Configure build
         run: |
           cd openwrt-sdk
-          
-          # Create minimal config with required packages
           cat > .config <<EOF
           CONFIG_TARGET_mediatek_filogic=y
           CONFIG_TARGET_mediatek_filogic_DEVICE_glinet_gl-mt3000=y
-          
+          CONFIG_CCACHE=y
+          CONFIG_DEVEL=y
           CONFIG_PACKAGE_librist=m
           CONFIG_PACKAGE_srt=m
           CONFIG_PACKAGE_ffmpeg=m
           CONFIG_PACKAGE_libopenssl=m
           CONFIG_PACKAGE_libpthread=m
           CONFIG_PACKAGE_srt-to-rist-gateway=m
-          
           CONFIG_PACKAGE_kmod-crypto-hash=y
           CONFIG_PACKAGE_kmod-crypto-crc32c=y
-          
           CONFIG_FFMPEG_CUSTOM_ENCODERS=y
           CONFIG_FFMPEG_CUSTOM_DECODERS=y
           CONFIG_FFMPEG_CUSTOM_MUXERS=y
           CONFIG_FFMPEG_CUSTOM_DEMUXERS=y
           CONFIG_FFMPEG_CUSTOM_PARSERS=y
           CONFIG_FFMPEG_CUSTOM_PROTOCOLS=y
-          
           CONFIG_OPENSSL_ENGINE=y
-          CONFIG_OPENSSL_OPTIMIZE_SPEED=y
           CONFIG_OPENSSL_WITH_ASM=y
           CONFIG_OPENSSL_WITH_DEPRECATED=y
           CONFIG_OPENSSL_WITH_ERROR_MESSAGES=y
-          
-          CONFIG_CCACHE=y
           EOF
           
           make defconfig
-          make -j1 V=s config-dump
 
       - name: Build package
         run: |
           cd openwrt-sdk
-          make package/srt-to-rist-gateway/compile V=s || {
-            echo "Build failed. Checking logs..."
-            find logs -type f -exec sh -c 'echo "=== {} ==="; cat {}' \;
+          make package/srt-to-rist-gateway/compile -j$(nproc) || {
+            echo "Build failed"
+            find logs -type f -name '*.txt' -exec cat {} \;
             exit 1
           }
 
