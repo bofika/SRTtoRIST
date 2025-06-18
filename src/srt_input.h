@@ -74,7 +74,10 @@ private:
     
     bool m_initialized = false;
     bool m_running = false;
-    
+
+    // Epoll ID for socket events
+    int m_epoll_id = -1;
+
     // Polling structures
     std::vector<SRTSOCKET> m_poll_sockets;
 };
