@@ -62,7 +62,13 @@ Settings are loaded from `config.json`. Key options include:
 - `srt_mode` - SRT mode (`caller`, `listener`, or `multi`)
 - `rist_dst`/`rist_port` - destination for the RIST stream
 - `feedback_ip`/`feedback_port` - address for feedback messages to the encoder
+  (optional, default `192.168.1.50:5005`)
 - `min_bitrate`/`max_bitrate` - bitrate limits used when generating feedback
+- `filter_to_wan` - when using multi route mode, limit automatic interface
+  selection to WAN interfaces (default `true`)
+
+If any of the required options are missing from the configuration file, the
+gateway will print a clear error message indicating which key was expected.
 
 Refer to the bundled `config.json` for a full example.
 
