@@ -276,7 +276,9 @@ void SRTInput::handle_connections() {
     sockaddr_in client_addr;
     int addrlen = sizeof(client_addr);
     
-    SRTSOCKET client_sock = srt_accept(m_listen_socket, (sockaddr*)&client_addr, &addrlen);
+    SRTSOCKET client_sock = srt_accept(m_listen_socket,
+                                       reinterpret_cast<sockaddr*>(&client_addr),
+                                       &addrlen);
     if (client_sock == SRT_INVALID_SOCK) {
         report_srt_error("SRT accept failed");
         return;
@@ -320,9 +322,9 @@ void SRTInput::handle_connections() {
             std::cerr << "No output found for client IP " << client_ip << std::endl;
             srt_close(client_sock);
             // Remove from poll list
-            auto it = std::find(m_poll_sockets.begin(), m_poll_sockets.end(), client_sock);
-            if (it != m_poll_sockets.end()) {
-                m_poll_sockets.erase(it);
+            auto poll_it = std::find(m_poll_sockets.begin(), m_poll_sockets.end(), client_sock);
+            if (poll_it != m_poll_sockets.end()) {
+                m_poll_sockets.erase(poll_it);
             }
             if (m_epoll_id >= 0) {
                 srt_epoll_remove_usock(m_epoll_id, client_sock);
@@ -341,9 +343,10 @@ void SRTInput::process_socket(SRTSOCKET s, std::shared_ptr<RistOutput> output) {
             std::cout << "SRT connection lost" << std::endl;
             
             // Remove from poll list
-            auto it = std::find(m_poll_sockets.begin(), m_poll_sockets.end(), s);
-            if (it != m_poll_sockets.end()) {
-                m_poll_sockets.erase(it);
+            auto poll_it =
+                std::find(m_poll_sockets.begin(), m_poll_sockets.end(), s);
+            if (poll_it != m_poll_sockets.end()) {
+                m_poll_sockets.erase(poll_it);
             }
             if (m_epoll_id >= 0) {
                 srt_epoll_remove_usock(m_epoll_id, s);
