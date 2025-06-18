@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(srt_to_rist_gateway)
 
 find_package(PkgConfig REQUIRED)
+find_package(spdlog REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -36,6 +37,7 @@ target_link_libraries(srt_to_rist_gateway
     ${AVCODEC_LIBRARIES}
     ${AVUTIL_LIBRARIES}
     pthread
+    spdlog::spdlog
 )
 
 install(TARGETS srt_to_rist_gateway DESTINATION bin)
