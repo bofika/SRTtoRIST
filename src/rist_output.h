@@ -4,7 +4,6 @@
 #include <string>
 #include <memory>
 #include <librist/librist.h>
-#include <thread>
 #include <atomic>
 #include <mutex>
 
@@ -28,8 +27,6 @@ private:
     // RIST stats callback
     static int stats_callback(void* arg, const struct rist_stats *stats);
     
-    // Thread function to run RIST event loop
-    void rist_event_loop();
     
     std::string m_dst_ip;
     int m_dst_port;
@@ -38,7 +35,6 @@ private:
     struct rist_peer *m_peer = nullptr;
     
     std::shared_ptr<Feedback> m_feedback;
-    std::thread m_event_thread;
     std::atomic<bool> m_running{false};
     
     // Mutex for thread safety
@@ -46,3 +42,4 @@ private:
 };
 
 #endif // RIST_OUTPUT_H
+

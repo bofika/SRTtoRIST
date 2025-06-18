@@ -1,19 +1,13 @@
 #include "rist_output.h"
 #include "feedback.h"
 #include <iostream>
-#include <thread>
-#include <chrono>
 
 RistOutput::RistOutput(const std::string& dst_ip, int dst_port)
     : m_dst_ip(dst_ip), m_dst_port(dst_port) {
 }
 
 RistOutput::~RistOutput() {
-    // Stop event thread
     m_running = false;
-    if (m_event_thread.joinable()) {
-        m_event_thread.join();
-    }
     
     // Clean up RIST resources
     if (m_ctx) {
@@ -59,24 +53,24 @@ bool RistOutput::init() {
         return false;
     }
     
-    // Start RIST event loop
+    // Start RIST context which spawns the internal event thread
+    ret = rist_start(m_ctx);
+    if (ret != 0) {
+        std::cerr << "Failed to start RIST context: " << ret << std::endl;
+        rist_peer_destroy(m_peer);
+        m_peer = nullptr;
+        rist_destroy(m_ctx);
+        m_ctx = nullptr;
+        return false;
+    }
+
     m_running = true;
-    m_event_thread = std::thread(&RistOutput::rist_event_loop, this);
     
     std::cout << "RIST output initialized to " << url << std::endl;
     return true;
 }
 
-void RistOutput::rist_event_loop() {
-    while (m_running) {
-        int ret = rist_auth_handler(m_ctx);
-        if (ret != 0) {
-            std::cerr << "RIST auth handler error: " << ret << std::endl;
-        }
-        
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-}
+
 
 bool RistOutput::send_data(const char* data, size_t size) {
     if (!m_ctx || !m_peer) {
