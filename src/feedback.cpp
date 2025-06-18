@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <cstring>
+#include <cmath>
 
 // Feedback destination (encoder)
 #define FEEDBACK_IP "192.168.1.50"
