@@ -3,6 +3,8 @@
 #include <string>
 #include <memory>
 #include <signal.h>
+#include <thread>
+#include <chrono>
 #include <nlohmann/json.hpp>
 
 #include "config.h"
@@ -137,6 +139,9 @@ int main(int argc, char* argv[]) {
                 for (const auto& route : config.multi_routes) {
                     auto rist = std::make_shared<RistOutput>(route.rist_dst, route.rist_port);
                     rist->set_feedback_callback(feedback);
+                    if (!rist->init()) {
+                        throw std::runtime_error("Failed to initialize RIST output");
+                    }
                     outputs.push_back(rist);
                 }
                 
@@ -151,6 +156,9 @@ int main(int argc, char* argv[]) {
                 // Create SRT caller input
                 auto rist = std::make_shared<RistOutput>(config.rist_dst, config.rist_port);
                 rist->set_feedback_callback(feedback);
+                if (!rist->init()) {
+                    throw std::runtime_error("Failed to initialize RIST output");
+                }
                 outputs.push_back(rist);
                 input = std::make_unique<SRTInput>(config.input_url, outputs[0]);
                 
@@ -158,6 +166,9 @@ int main(int argc, char* argv[]) {
                 // Create SRT listener input
                 auto rist = std::make_shared<RistOutput>(config.rist_dst, config.rist_port);
                 rist->set_feedback_callback(feedback);
+                if (!rist->init()) {
+                    throw std::runtime_error("Failed to initialize RIST output");
+                }
                 outputs.push_back(rist);
                 input = std::make_unique<SRTInput>(config.listen_port, outputs[0]);
             }
@@ -165,6 +176,9 @@ int main(int argc, char* argv[]) {
             // Create RTSP input
             auto rist = std::make_shared<RistOutput>(config.rist_dst, config.rist_port);
             rist->set_feedback_callback(feedback);
+            if (!rist->init()) {
+                throw std::runtime_error("Failed to initialize RIST output");
+            }
             outputs.push_back(rist);
             input = std::make_unique<RTSPInput>(config.input_url, outputs[0]);
         }
