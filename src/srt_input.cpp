@@ -67,6 +67,20 @@ bool SRTInput::start() {
     }
     
     if (success) {
+        // Create epoll instance
+        m_epoll_id = srt_epoll_create();
+        if (m_epoll_id < 0) {
+            report_srt_error("Failed to create SRT epoll");
+            return false;
+        }
+
+        int events = SRT_EPOLL_IN;
+        for (auto s : m_poll_sockets) {
+            if (srt_epoll_add_usock(m_epoll_id, s, &events) < 0) {
+                report_srt_error("Failed to add socket to epoll");
+            }
+        }
+
         m_running = true;
         std::cout << "SRT input started successfully" << std::endl;
     } else {
@@ -183,7 +197,7 @@ void SRTInput::process() {
     std::vector<SRTSOCKET> readfds = m_poll_sockets;
     int rlen = readfds.size();
     
-    int ret = srt_epoll_wait(SRT_INVALID_SOCK, &readfds[0], &rlen, nullptr, nullptr, 10, nullptr, nullptr, nullptr, nullptr);
+    int ret = srt_epoll_wait(m_epoll_id, &readfds[0], &rlen, nullptr, nullptr, 10, nullptr, nullptr, nullptr, nullptr);
     
     if (ret < 0) {
         if (srt_getlasterror(nullptr) == SRT_ETIMEOUT) {
@@ -234,6 +248,13 @@ void SRTInput::handle_connections() {
     
     // Add to poll list
     m_poll_sockets.push_back(client_sock);
+
+    int events = SRT_EPOLL_IN;
+    if (m_epoll_id >= 0) {
+        if (srt_epoll_add_usock(m_epoll_id, client_sock, &events) < 0) {
+            report_srt_error("Failed to add client socket to epoll");
+        }
+    }
     
     // For multi mode, map to appropriate output
     if (m_mode == Mode::MULTI) {
@@ -260,6 +281,9 @@ void SRTInput::handle_connections() {
             if (it != m_poll_sockets.end()) {
                 m_poll_sockets.erase(it);
             }
+            if (m_epoll_id >= 0) {
+                srt_epoll_remove_usock(m_epoll_id, client_sock);
+            }
         }
     }
 }
@@ -277,6 +301,9 @@ void SRTInput::process_socket(SRTSOCKET s, std::shared_ptr<RistOutput> output) {
             auto it = std::find(m_poll_sockets.begin(), m_poll_sockets.end(), s);
             if (it != m_poll_sockets.end()) {
                 m_poll_sockets.erase(it);
+            }
+            if (m_epoll_id >= 0) {
+                srt_epoll_remove_usock(m_epoll_id, s);
             }
             
             // Remove from mapping
@@ -306,6 +333,11 @@ void SRTInput::stop() {
     }
     m_poll_sockets.clear();
     m_socket_to_output.clear();
+
+    if (m_epoll_id >= 0) {
+        srt_epoll_release(m_epoll_id);
+        m_epoll_id = -1;
+    }
     
     m_caller_socket = SRT_INVALID_SOCK;
     m_listen_socket = SRT_INVALID_SOCK;
