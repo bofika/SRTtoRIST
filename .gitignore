@@ -1,2 +1,15 @@
 node_modules
 .env
+
+# Build artifacts
+build/
+*.ipk
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
+# OpenWRT build directories
+bin/
+build_dir/
+staging_dir/
+tmp/
