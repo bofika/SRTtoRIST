@@ -11,15 +11,17 @@ pkg_check_modules(SRT REQUIRED srt)
 pkg_check_modules(AVFORMAT REQUIRED libavformat)
 pkg_check_modules(AVCODEC REQUIRED libavcodec)
 pkg_check_modules(AVUTIL REQUIRED libavutil)
+pkg_check_modules(RIST REQUIRED librist)
 
 include_directories(
     ${SRT_INCLUDE_DIRS}
     ${AVFORMAT_INCLUDE_DIRS}
     ${AVCODEC_INCLUDE_DIRS}
     ${AVUTIL_INCLUDE_DIRS}
+    ${RIST_INCLUDE_DIRS}
 )
 
-include_directories(${CMAKE_SOURCE_DIR}/third_party/nlohmann)
+include_directories(${CMAKE_SOURCE_DIR}/third_party)
 
 set(SOURCES
     src/main.cpp
@@ -27,6 +29,7 @@ set(SOURCES
     src/rtsp_input.cpp
     src/feedback.cpp
     src/network_utils.cpp
+    src/rist_output.cpp
 )
 
 add_executable(srt_to_rist_gateway ${SOURCES})
@@ -36,6 +39,7 @@ target_link_libraries(srt_to_rist_gateway
     ${AVFORMAT_LIBRARIES}
     ${AVCODEC_LIBRARIES}
     ${AVUTIL_LIBRARIES}
+    ${RIST_LIBRARIES}
     pthread
     spdlog::spdlog
 )
