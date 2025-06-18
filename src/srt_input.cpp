@@ -1,6 +1,7 @@
 #include "srt_input.h"
 #include <iostream>
 #include <vector>
+#include <algorithm>
 #include <thread>
 #include <chrono>
 
