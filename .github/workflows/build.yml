@@ -145,7 +145,7 @@ jobs:
       - name: Build package
         run: |
           cd openwrt-sdk
-          make package/srt-to-rist-gateway/compile -j$(nproc) || {
+          make package/srt-to-rist-gateway/compile -j1 V=s || {
             echo "Build failed"
             find logs -type f -name '*.txt' -exec cat {} \;
             exit 1
