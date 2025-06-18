@@ -26,6 +26,7 @@ jobs:
             openwrt-core
             openwrt-srt
             openwrt-librist
+            openwrt-spdlog
             .ccache
           key: ${{ runner.os }}-openwrt-sdk-23.05.3-${{ hashFiles('**/*.mk', '**/*.cmake', 'Makefile') }}-${{ github.sha }}
           restore-keys: |
@@ -79,12 +80,14 @@ jobs:
           git clone --depth=1 --branch openwrt-23.05 https://github.com/openwrt/openwrt.git openwrt-core &
           git clone --depth=1 https://github.com/Haivision/srt.git openwrt-srt &
           git clone --depth=1 https://code.videolan.org/rist/librist.git openwrt-librist &
+          git clone --depth=1 https://github.com/gabime/spdlog.git openwrt-spdlog &
           wait
           
           cp -r openwrt-core/package/libs/openssl openwrt-sdk/package/libs/libopenssl
           cp -r openwrt-packages/multimedia/ffmpeg openwrt-sdk/package/multimedia/
           cp -r openwrt-srt openwrt-sdk/package/libs/srt
           cp -r openwrt-librist openwrt-sdk/package/libs/librist
+          cp -r openwrt-spdlog openwrt-sdk/package/libs/spdlog
 
       - name: Update and install feeds
         run: |
