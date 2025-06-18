@@ -1,5 +1,5 @@
 #include "rtsp_input.h"
-#include <iostream>
+#include <spdlog/spdlog.h>
 
 RTSPInput::RTSPInput(const std::string& rtsp_url, std::shared_ptr<RistOutput> output)
     : m_rtsp_url(rtsp_url) {
@@ -22,7 +22,7 @@ bool RTSPInput::init_ffmpeg() {
     // Allocate packet
     m_packet = av_packet_alloc();
     if (!m_packet) {
-        std::cerr << "Failed to allocate packet" << std::endl;
+        spdlog::error("Failed to allocate packet");
         return false;
     }
     
@@ -33,7 +33,7 @@ bool RTSPInput::open_rtsp_stream() {
     // Set up format context
     m_format_ctx = avformat_alloc_context();
     if (!m_format_ctx) {
-        std::cerr << "Failed to allocate format context" << std::endl;
+        spdlog::error("Failed to allocate format context");
         return false;
     }
     
@@ -47,7 +47,7 @@ bool RTSPInput::open_rtsp_stream() {
     if (ret < 0) {
         char errbuf[AV_ERROR_MAX_STRING_SIZE];
         av_strerror(ret, errbuf, sizeof(errbuf));
-        std::cerr << "Failed to open RTSP input: " << errbuf << std::endl;
+        spdlog::error("Failed to open RTSP input: {}", errbuf);
         avformat_close_input(&m_format_ctx);
         av_dict_free(&options);
         return false;
@@ -61,7 +61,7 @@ bool RTSPInput::open_rtsp_stream() {
     if (ret < 0) {
         char errbuf[AV_ERROR_MAX_STRING_SIZE];
         av_strerror(ret, errbuf, sizeof(errbuf));
-        std::cerr << "Failed to find stream info: " << errbuf << std::endl;
+        spdlog::error("Failed to find stream info: {}", errbuf);
         avformat_close_input(&m_format_ctx);
         return false;
     }
@@ -76,7 +76,7 @@ bool RTSPInput::open_rtsp_stream() {
     }
     
     if (m_video_stream_idx == -1) {
-        std::cerr << "Failed to find video stream in RTSP source" << std::endl;
+        spdlog::error("Failed to find video stream in RTSP source");
         avformat_close_input(&m_format_ctx);
         return false;
     }
@@ -84,7 +84,7 @@ bool RTSPInput::open_rtsp_stream() {
     // Print stream info
     av_dump_format(m_format_ctx, 0, m_rtsp_url.c_str(), 0);
     
-    std::cout << "RTSP stream opened successfully" << std::endl;
+    spdlog::info("RTSP stream opened successfully");
     return true;
 }
 
@@ -113,7 +113,7 @@ bool RTSPInput::read_packet() {
     int ret = av_read_frame(m_format_ctx, m_packet);
     if (ret < 0) {
         if (ret == AVERROR_EOF) {
-            std::cout << "End of RTSP stream" << std::endl;
+            spdlog::info("End of RTSP stream");
             m_running = false;
         } else if (ret == AVERROR(EAGAIN)) {
             // Resource temporarily unavailable, try again later
@@ -121,11 +121,11 @@ bool RTSPInput::read_packet() {
         } else {
             char errbuf[AV_ERROR_MAX_STRING_SIZE];
             av_strerror(ret, errbuf, sizeof(errbuf));
-            std::cerr << "Error reading frame: " << errbuf << std::endl;
+            spdlog::error("Error reading frame: {}", errbuf);
             
             // Attempt to reconnect for certain errors
             if (ret == AVERROR(EIO) || ret == AVERROR(ETIMEDOUT)) {
-                std::cout << "Attempting to reconnect to RTSP stream..." << std::endl;
+                spdlog::info("Attempting to reconnect to RTSP stream...");
                 stop();
                 m_running = start();
             }

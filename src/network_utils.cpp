@@ -1,5 +1,5 @@
 #include "network_utils.h"
-#include <iostream>
+#include <spdlog/spdlog.h>
 #include <ifaddrs.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -13,7 +13,7 @@ std::vector<std::string> NetworkUtils::get_interface_ips() {
     struct ifaddrs *ifaddr, *ifa;
     
     if (getifaddrs(&ifaddr) == -1) {
-        std::cerr << "getifaddrs failed: " << strerror(errno) << std::endl;
+        spdlog::error("getifaddrs failed: {}", strerror(errno));
         return ips;
     }
     
@@ -34,7 +34,7 @@ std::vector<std::string> NetworkUtils::get_interface_ips() {
             // Skip loopback
             if (strcmp(ip, "127.0.0.1") != 0) {
                 ips.push_back(std::string(ip));
-                std::cout << "Found interface " << ifa->ifa_name << " with IP " << ip << std::endl;
+                spdlog::info("Found interface {} with IP {}", ifa->ifa_name, ip);
             }
         }
     }
@@ -48,7 +48,7 @@ std::vector<std::string> NetworkUtils::get_wan_interface_ips() {
     struct ifaddrs *ifaddr, *ifa;
     
     if (getifaddrs(&ifaddr) == -1) {
-        std::cerr << "getifaddrs failed: " << strerror(errno) << std::endl;
+        spdlog::error("getifaddrs failed: {}", strerror(errno));
         return wan_ips;
     }
     
@@ -71,7 +71,7 @@ std::vector<std::string> NetworkUtils::get_wan_interface_ips() {
                 // Check if this is a WAN interface
                 if (is_wan_interface(ifa->ifa_name)) {
                     wan_ips.push_back(std::string(ip));
-                    std::cout << "Found WAN interface " << ifa->ifa_name << " with IP " << ip << std::endl;
+                    spdlog::info("Found WAN interface {} with IP {}", ifa->ifa_name, ip);
                 }
             }
         }
@@ -81,7 +81,7 @@ std::vector<std::string> NetworkUtils::get_wan_interface_ips() {
     
     // If no WAN interfaces found, fallback to all non-loopback interfaces
     if (wan_ips.empty()) {
-        std::cout << "No WAN interfaces found, falling back to all interfaces" << std::endl;
+        spdlog::info("No WAN interfaces found, falling back to all interfaces");
         return get_interface_ips();
     }
     
@@ -119,13 +119,13 @@ bool NetworkUtils::check_uci_interface(const std::string& interface_name) {
     // Create child process for shell command
     int pipefd[2];
     if (pipe(pipefd) == -1) {
-        std::cerr << "pipe failed: " << strerror(errno) << std::endl;
+        spdlog::error("pipe failed: {}", strerror(errno));
         return false;
     }
     
     pid_t pid = fork();
     if (pid == -1) {
-        std::cerr << "fork failed: " << strerror(errno) << std::endl;
+        spdlog::error("fork failed: {}", strerror(errno));
         close(pipefd[0]);
         close(pipefd[1]);
         return false;
@@ -143,7 +143,7 @@ bool NetworkUtils::check_uci_interface(const std::string& interface_name) {
         execlp("uci", "uci", "show", "network.wan.ifname", nullptr);
         
         // If execlp returns, it failed
-        std::cerr << "execlp failed: " << strerror(errno) << std::endl;
+        spdlog::error("execlp failed: {}", strerror(errno));
         exit(1);
     } else {
         // Parent process
