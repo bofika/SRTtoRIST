@@ -66,3 +66,7 @@ Settings are loaded from `config.json`. Key options include:
 
 Refer to the bundled `config.json` for a full example.
 
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
