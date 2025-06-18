@@ -9,12 +9,10 @@
 #include <unistd.h>
 #include <cstring>
 
-// Feedback destination (encoder)
-#define FEEDBACK_IP "192.168.1.50"
-#define FEEDBACK_PORT 5005
-
-Feedback::Feedback(uint32_t min_bitrate, uint32_t max_bitrate)
-    : m_min_bitrate(min_bitrate), m_max_bitrate(max_bitrate) {
+Feedback::Feedback(uint32_t min_bitrate, uint32_t max_bitrate,
+                   const std::string& ip, int port)
+    : m_min_bitrate(min_bitrate), m_max_bitrate(max_bitrate),
+      m_ip(ip), m_port(port) {
     // Initialize socket
     init_socket();
 }
@@ -113,10 +111,10 @@ bool Feedback::send_feedback(uint32_t bitrate_hint, float packet_loss, uint32_t 
     
     // Alternative HTTP GET format
     std::stringstream http_ss;
-    http_ss << "GET /ctrl/stream_setting?index=stream1&width=1920&height=1080&bitrate=" 
+    http_ss << "GET /ctrl/stream_setting?index=stream1&width=1920&height=1080&bitrate="
             << (bitrate_hint * 1000) // Convert to bps
             << " HTTP/1.1\r\n"
-            << "Host: " << FEEDBACK_IP << "\r\n"
+            << "Host: " << m_ip << "\r\n"
             << "\r\n";
     
     std::string http_msg = http_ss.str();
@@ -125,8 +123,8 @@ bool Feedback::send_feedback(uint32_t bitrate_hint, float packet_loss, uint32_t 
     struct sockaddr_in dest_addr;
     memset(&dest_addr, 0, sizeof(dest_addr));
     dest_addr.sin_family = AF_INET;
-    dest_addr.sin_port = htons(FEEDBACK_PORT);
-    inet_pton(AF_INET, FEEDBACK_IP, &dest_addr.sin_addr);
+    dest_addr.sin_port = htons(m_port);
+    inet_pton(AF_INET, m_ip.c_str(), &dest_addr.sin_addr);
     
     // Send feedback message
     ssize_t sent = sendto(m_socket_fd, http_msg.c_str(), http_msg.size(), 0,

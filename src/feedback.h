@@ -7,7 +7,8 @@
 
 class Feedback {
 public:
-    Feedback(uint32_t min_bitrate, uint32_t max_bitrate);
+    Feedback(uint32_t min_bitrate, uint32_t max_bitrate,
+             const std::string& ip, int port);
     ~Feedback();
     
     // Process network stats and send feedback
@@ -31,6 +32,8 @@ private:
     
     uint32_t m_min_bitrate;
     uint32_t m_max_bitrate;
+    std::string m_ip;
+    int m_port;
     int m_socket_fd = -1;
     std::mutex m_mutex;
     

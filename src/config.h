@@ -38,6 +38,10 @@ struct Config {
     // RIST settings
     std::string rist_dst;
     int rist_port;
+
+    // Feedback settings
+    std::string feedback_ip = "192.168.1.50";
+    int feedback_port = 5005;
     
     // Bitrate settings
     int min_bitrate;
