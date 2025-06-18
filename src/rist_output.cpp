@@ -1,6 +1,6 @@
 #include "rist_output.h"
 #include "feedback.h"
-#include <iostream>
+#include <spdlog/spdlog.h>
 #include <thread>
 #include <chrono>
 
@@ -35,7 +35,7 @@ bool RistOutput::init() {
     struct rist_ctx_options options = {0};
     ret = rist_sender_create(&m_ctx, RIST_PROFILE_MAIN, &options);
     if (ret != 0) {
-        std::cerr << "Failed to create RIST sender context: " << ret << std::endl;
+        spdlog::error("Failed to create RIST sender context: {}", ret);
         return false;
     }
     
@@ -53,7 +53,7 @@ bool RistOutput::init() {
     
     ret = rist_peer_create(m_ctx, &m_peer, &peer_config);
     if (ret != 0 || !m_peer) {
-        std::cerr << "Failed to create RIST peer: " << ret << std::endl;
+        spdlog::error("Failed to create RIST peer: {}", ret);
         rist_destroy(m_ctx);
         m_ctx = nullptr;
         return false;
@@ -63,7 +63,7 @@ bool RistOutput::init() {
     m_running = true;
     m_event_thread = std::thread(&RistOutput::rist_event_loop, this);
     
-    std::cout << "RIST output initialized to " << url << std::endl;
+    spdlog::info("RIST output initialized to {}", url);
     return true;
 }
 
@@ -71,7 +71,7 @@ void RistOutput::rist_event_loop() {
     while (m_running) {
         int ret = rist_auth_handler(m_ctx);
         if (ret != 0) {
-            std::cerr << "RIST auth handler error: " << ret << std::endl;
+            spdlog::error("RIST auth handler error: {}", ret);
         }
         
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -92,7 +92,7 @@ bool RistOutput::send_data(const char* data, size_t size) {
     // Send data over RIST
     int ret = rist_sender_data_write(m_ctx, data, size, stream_id);
     if (ret < 0) {
-        std::cerr << "Failed to send data over RIST: " << ret << std::endl;
+        spdlog::error("Failed to send data over RIST: {}", ret);
         return false;
     }
     

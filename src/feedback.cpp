@@ -1,5 +1,5 @@
 #include "feedback.h"
-#include <iostream>
+#include <spdlog/spdlog.h>
 #include <sstream>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -29,7 +29,7 @@ bool Feedback::init_socket() {
     // Create UDP socket
     m_socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (m_socket_fd < 0) {
-        std::cerr << "Failed to create feedback socket: " << strerror(errno) << std::endl;
+        spdlog::error("Failed to create feedback socket: {}", strerror(errno));
         return false;
     }
     
@@ -129,10 +129,10 @@ bool Feedback::send_feedback(uint32_t bitrate_hint, float packet_loss, uint32_t 
                         (struct sockaddr*)&dest_addr, sizeof(dest_addr));
     
     if (sent < 0) {
-        std::cerr << "Failed to send feedback: " << strerror(errno) << std::endl;
+        spdlog::error("Failed to send feedback: {}", strerror(errno));
         return false;
     }
-    
-    std::cout << "Sent feedback to encoder - " << feedback_msg;
+
+    spdlog::info("Sent feedback to encoder - {}", feedback_msg);
     return true;
 }

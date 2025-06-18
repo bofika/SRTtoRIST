@@ -1,5 +1,5 @@
 #include "srt_input.h"
-#include <iostream>
+#include <spdlog/spdlog.h>
 #include <vector>
 #include <thread>
 #include <chrono>
@@ -82,9 +82,9 @@ bool SRTInput::start() {
         }
 
         m_running = true;
-        std::cout << "SRT input started successfully" << std::endl;
+        spdlog::info("SRT input started successfully");
     } else {
-        std::cerr << "Failed to start SRT input" << std::endl;
+        spdlog::error("Failed to start SRT input");
     }
     
     return success;
@@ -180,7 +180,7 @@ bool SRTInput::setup_listener() {
 bool SRTInput::setup_multi_listener() {
     // Make sure we have interface bindings
     if (m_ip_to_output.empty()) {
-        std::cerr << "No interface bindings specified for multi-interface mode" << std::endl;
+        spdlog::error("No interface bindings specified for multi-interface mode");
         return false;
     }
     
@@ -244,7 +244,7 @@ void SRTInput::handle_connections() {
     inet_ntop(AF_INET, &client_addr.sin_addr, ipstr, INET_ADDRSTRLEN);
     std::string client_ip(ipstr);
     
-    std::cout << "New SRT connection from " << client_ip << ":" << ntohs(client_addr.sin_port) << std::endl;
+    spdlog::info("New SRT connection from {}:{}", client_ip, ntohs(client_addr.sin_port));
     
     // Add to poll list
     m_poll_sockets.push_back(client_sock);
@@ -274,7 +274,7 @@ void SRTInput::handle_connections() {
         if (output) {
             m_socket_to_output[client_sock] = output;
         } else {
-            std::cerr << "No output found for client IP " << client_ip << std::endl;
+            spdlog::error("No output found for client IP {}", client_ip);
             srt_close(client_sock);
             // Remove from poll list
             auto it = std::find(m_poll_sockets.begin(), m_poll_sockets.end(), client_sock);
@@ -295,7 +295,7 @@ void SRTInput::process_socket(SRTSOCKET s, std::shared_ptr<RistOutput> output) {
     int ret = srt_recvmsg(s, buffer.data(), buffer.size());
     if (ret < 0) {
         if (srt_getlasterror(nullptr) == SRT_ECONNLOST) {
-            std::cout << "SRT connection lost" << std::endl;
+            spdlog::info("SRT connection lost");
             
             // Remove from poll list
             auto it = std::find(m_poll_sockets.begin(), m_poll_sockets.end(), s);
@@ -350,5 +350,5 @@ void SRTInput::stop() {
 
 void SRTInput::report_srt_error(const std::string& context) {
     int errcode = srt_getlasterror(nullptr);
-    std::cerr << context << ": " << srt_getlasterror_str() << " (" << errcode << ")" << std::endl;
+    spdlog::error("{}: {} ({})", context, srt_getlasterror_str(), errcode);
 }

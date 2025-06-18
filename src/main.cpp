@@ -1,4 +1,4 @@
-#include <iostream>
+#include <spdlog/spdlog.h>
 #include <fstream>
 #include <string>
 #include <memory>
@@ -20,7 +20,7 @@ using json = nlohmann::json;
 volatile sig_atomic_t running = 1;
 
 void signal_handler(int signal) {
-    std::cout << "Caught signal " << signal << ", shutting down..." << std::endl;
+    spdlog::info("Caught signal {}, shutting down...", signal);
     running = 0;
 }
 
@@ -92,7 +92,7 @@ Config parse_config(const std::string& config_path) {
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <config.json>" << std::endl;
+        spdlog::error("Usage: {} <config.json>", argv[0]);
         return 1;
     }
     
@@ -126,8 +126,7 @@ int main(int argc, char* argv[]) {
                         if (route.interface_ip == "auto") {
                             if (ip_index < wan_ips.size()) {
                                 route.interface_ip = wan_ips[ip_index++];
-                                std::cout << "Assigned WAN IP " << route.interface_ip 
-                                          << " to route " << ip_index << std::endl;
+                                spdlog::info("Assigned WAN IP {} to route {}", route.interface_ip, ip_index);
                             } else {
                                 throw std::runtime_error("Not enough WAN interfaces for configured routes");
                             }
@@ -187,7 +186,7 @@ int main(int argc, char* argv[]) {
             throw std::runtime_error("Failed to initialize input or output");
         }
         
-        std::cout << "Stream relay initialized successfully" << std::endl;
+        spdlog::info("Stream relay initialized successfully");
         
         // Start the stream relay
         input->start();
@@ -204,10 +203,10 @@ int main(int argc, char* argv[]) {
         input->stop();
         
     } catch (std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+        spdlog::error("Error: {}", e.what());
         return 1;
     }
     
-    std::cout << "Stream relay terminated" << std::endl;
+    spdlog::info("Stream relay terminated");
     return 0;
 }
