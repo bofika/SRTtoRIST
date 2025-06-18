@@ -12,6 +12,9 @@ public:
     
     // Process network stats and send feedback
     void process_stats(uint32_t bitrate_avg, float packet_loss, uint32_t rtt);
+
+    // Number of consecutive failures when sending feedback
+    size_t get_failure_count() const { return m_failure_count; }
     
 private:
     // Initialize UDP socket for feedback
@@ -35,6 +38,9 @@ private:
     uint32_t m_last_bitrate = 0;
     float m_last_packet_loss = 0.0f;
     uint32_t m_last_rtt = 0;
+
+    // Track consecutive send failures
+    size_t m_failure_count = 0;
 };
 
 #endif // FEEDBACK_H

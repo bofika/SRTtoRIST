@@ -1,6 +1,8 @@
 #include "feedback.h"
 #include <iostream>
 #include <sstream>
+#include <iomanip>
+#include <spdlog/spdlog.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -96,6 +98,8 @@ uint32_t Feedback::clamp_bitrate(uint32_t bitrate) {
 
 bool Feedback::send_feedback(uint32_t bitrate_hint, float packet_loss, uint32_t rtt) {
     if (m_socket_fd < 0) {
+        ++m_failure_count;
+        spdlog::error("Feedback socket not initialized");
         return false;
     }
     
@@ -126,13 +130,17 @@ bool Feedback::send_feedback(uint32_t bitrate_hint, float packet_loss, uint32_t 
     
     // Send feedback message
     ssize_t sent = sendto(m_socket_fd, http_msg.c_str(), http_msg.size(), 0,
-                        (struct sockaddr*)&dest_addr, sizeof(dest_addr));
-    
+                          (struct sockaddr*)&dest_addr, sizeof(dest_addr));
+
     if (sent < 0) {
-        std::cerr << "Failed to send feedback: " << strerror(errno) << std::endl;
+        ++m_failure_count;
+        spdlog::error("Failed to send feedback: {}", strerror(errno));
         return false;
     }
-    
+
+    // Reset failure counter on success
+    m_failure_count = 0;
+
     std::cout << "Sent feedback to encoder - " << feedback_msg;
     return true;
 }
