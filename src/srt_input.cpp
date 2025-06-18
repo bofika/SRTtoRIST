@@ -4,6 +4,11 @@
 #include <algorithm>
 #include <thread>
 #include <chrono>
+#include <cstring>
+#include <netdb.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 // Buffer size for SRT data
 #define SRT_BUFFER_SIZE 1456 * 100  // Should be multiple of SRT packet size
@@ -98,42 +103,79 @@ bool SRTInput::setup_caller() {
         report_srt_error("Failed to create SRT socket");
         return false;
     }
-    
+
     // Parse URL
     std::string host;
-    int port;
-    size_t pos = m_srt_url.find("://");
+    std::string port_str;
+    std::string url = m_srt_url;
+
+    size_t pos = url.find("://");
     if (pos != std::string::npos) {
-        host = m_srt_url.substr(pos + 3);
-    } else {
-        host = m_srt_url;
+        url = url.substr(pos + 3);
     }
-    
-    pos = host.find(":");
-    if (pos != std::string::npos) {
-        port = std::stoi(host.substr(pos + 1));
-        host = host.substr(0, pos);
-    } else {
-        port = 1234;  // Default SRT port
+
+    if (!url.empty() && url[0] == '[') {
+        // IPv6 address in brackets
+        size_t end = url.find(']');
+        if (end != std::string::npos) {
+            host = url.substr(1, end - 1);
+            if (end + 1 < url.size() && url[end + 1] == ':') {
+                port_str = url.substr(end + 2);
+            }
+        }
     }
-    
+
+    if (host.empty()) {
+        // IPv4 or hostname
+        pos = url.rfind(':');
+        if (pos != std::string::npos && url.find(':') == pos) {
+            host = url.substr(0, pos);
+            port_str = url.substr(pos + 1);
+        } else {
+            host = url;
+        }
+    }
+
+    if (port_str.empty()) {
+        port_str = "1234"; // Default SRT port
+    }
+
     // Set SRT options
     int latency = 200;  // ms
     srt_setsockopt(m_caller_socket, 0, SRTO_LATENCY, &latency, sizeof(latency));
-    
-    // Connect to remote SRT server
-    sockaddr_in sa;
-    sa.sin_family = AF_INET;
-    sa.sin_port = htons(port);
-    inet_pton(AF_INET, host.c_str(), &sa.sin_addr);
-    
-    if (srt_connect(m_caller_socket, (sockaddr*)&sa, sizeof(sa)) < 0) {
+
+    // Resolve host using getaddrinfo
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_DGRAM;
+
+    struct addrinfo* res = nullptr;
+    int ret = getaddrinfo(host.c_str(), port_str.c_str(), &hints, &res);
+    if (ret != 0) {
+        std::cerr << "getaddrinfo failed: " << gai_strerror(ret) << std::endl;
+        srt_close(m_caller_socket);
+        m_caller_socket = SRT_INVALID_SOCK;
+        return false;
+    }
+
+    bool connected = false;
+    for (struct addrinfo* ai = res; ai != nullptr; ai = ai->ai_next) {
+        if (srt_connect(m_caller_socket, ai->ai_addr, ai->ai_addrlen) == 0) {
+            connected = true;
+            break;
+        }
+    }
+
+    freeaddrinfo(res);
+
+    if (!connected) {
         report_srt_error("Failed to connect to SRT server");
         srt_close(m_caller_socket);
         m_caller_socket = SRT_INVALID_SOCK;
         return false;
     }
-    
+
     m_poll_sockets.push_back(m_caller_socket);
     return true;
 }
