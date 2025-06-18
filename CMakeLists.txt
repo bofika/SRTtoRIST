@@ -18,7 +18,7 @@ include_directories(
     ${AVUTIL_INCLUDE_DIRS}
 )
 
-include_directories(${CMAKE_SOURCE_DIR}/third_party)
+include_directories(${CMAKE_SOURCE_DIR}/third_party/nlohmann)
 
 set(SOURCES
     src/main.cpp
