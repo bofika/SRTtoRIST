@@ -1,0 +1,8 @@
+{
+  "mode": "rtsp",
+  "input_url": "rtsp://example.com/stream",
+  "rist_dst": "192.168.1.200",
+  "rist_port": 8000,
+  "min_bitrate": 1000,
+  "max_bitrate": 2000
+}
