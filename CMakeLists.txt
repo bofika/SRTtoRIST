@@ -19,14 +19,6 @@ include_directories(
 )
 
 include_directories(${CMAKE_SOURCE_DIR}/third_party)
-file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/nlohmann)
-if(NOT EXISTS ${CMAKE_SOURCE_DIR}/third_party/nlohmann/json.hpp)
-    file(DOWNLOAD
-        https://github.com/nlohmann/json/releases/download/v3.11.2/json.hpp
-        ${CMAKE_SOURCE_DIR}/third_party/nlohmann/json.hpp
-        SHOW_PROGRESS
-    )
-endif()
 
 set(SOURCES
     src/main.cpp
