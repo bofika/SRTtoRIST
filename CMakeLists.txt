@@ -25,6 +25,7 @@ include_directories(${CMAKE_SOURCE_DIR}/third_party)
 
 set(SOURCES
     src/main.cpp
+    src/config_parser.cpp
     src/srt_input.cpp
     src/rtsp_input.cpp
     src/feedback.cpp
