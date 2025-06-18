@@ -21,17 +21,21 @@ These provide the SRT, RIST and FFmpeg libraries used by the gateway.
 ## Building with the OpenWRT SDK
 
 1. **Obtain the SDK** for your target device from [openwrt.org](https://openwrt.org/). Extract it and enter the SDK directory.
-2. **Clone and install library packages**:
+2. **Clone and install library packages** (use the same version tag as your SDK, e.g. `v23.05.3`):
 
    ```sh
    mkdir -p package/libs
-   git clone https://github.com/Haivision/srt.git      openwrt-srt
-   git clone https://code.videolan.org/rist/librist.git openwrt-librist
-   git clone https://github.com/gabime/spdlog.git       openwrt-spdlog
+   git clone --branch v23.05.3 https://github.com/Haivision/srt.git      openwrt-srt
+   git clone --branch v23.05.3 https://code.videolan.org/rist/librist.git openwrt-librist
+   git clone --branch v23.05.3 https://github.com/gabime/spdlog.git       openwrt-spdlog
    cp -r openwrt-srt       package/libs/srt
    cp -r openwrt-librist   package/libs/librist
    cp -r openwrt-spdlog    package/libs/spdlog
    ```
+
+   All library repositories should be checked out at the same tag as the SDK. For
+   example, if your SDK is `v23.05.3`, use the `v23.05.3` tag for each of the
+   above clones.
 
 3. **Update and install feeds** to obtain FFmpeg and other dependencies:
 
