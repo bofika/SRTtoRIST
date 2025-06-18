@@ -82,6 +82,10 @@ Config parse_config(const std::string& config_path) {
         
         config.min_bitrate = j.at("min_bitrate");
         config.max_bitrate = j.at("max_bitrate");
+
+        // Parse feedback settings
+        config.feedback_ip = j.value("feedback_ip", config.feedback_ip);
+        config.feedback_port = j.value("feedback_port", config.feedback_port);
         
     } catch (json::exception& e) {
         throw std::runtime_error("JSON parsing error: " + std::string(e.what()));
@@ -105,7 +109,9 @@ int main(int argc, char* argv[]) {
         Config config = parse_config(argv[1]);
         
         // Setup feedback handler
-        auto feedback = std::make_shared<Feedback>(config.min_bitrate, config.max_bitrate);
+        auto feedback = std::make_shared<Feedback>(
+            config.min_bitrate, config.max_bitrate,
+            config.feedback_ip, config.feedback_port);
         
         // Setup input and output based on config
         std::unique_ptr<InputBase> input;

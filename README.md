@@ -54,3 +54,15 @@ These provide the SRT, RIST and FFmpeg libraries used by the gateway.
 
 The resulting `.ipk` file will be found in `bin/packages/*/`. Install it on your OpenWRT device with `opkg install <package>.ipk`.
 
+## Configuration
+
+Settings are loaded from `config.json`. Key options include:
+
+- `mode` - `srt` or `rtsp` input mode
+- `srt_mode` - SRT mode (`caller`, `listener`, or `multi`)
+- `rist_dst`/`rist_port` - destination for the RIST stream
+- `feedback_ip`/`feedback_port` - address for feedback messages to the encoder
+- `min_bitrate`/`max_bitrate` - bitrate limits used when generating feedback
+
+Refer to the bundled `config.json` for a full example.
+

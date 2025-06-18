@@ -4,6 +4,8 @@
   "listen_port": 1234,
   "rist_dst": "192.168.1.200",
   "rist_port": 8000,
+  "feedback_ip": "192.168.1.50",
+  "feedback_port": 5005,
   "min_bitrate": 1000,
   "max_bitrate": 5000
 }
