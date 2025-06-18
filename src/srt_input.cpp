@@ -29,6 +29,17 @@ void SRTInput::add_binding(const std::string& interface_ip, std::shared_ptr<Rist
     if (m_mode == Mode::MULTI) {
         m_ip_to_output[interface_ip] = output;
         m_outputs.push_back(output);
+        if (!m_active_output) {
+            m_active_output = output;
+        }
+    }
+}
+
+void SRTInput::set_active_output(std::shared_ptr<RistOutput> output) {
+    if (m_mode != Mode::MULTI || !output) return;
+    m_active_output = output;
+    for (auto &pair : m_socket_to_output) {
+        pair.second = output;
     }
 }
 
@@ -235,31 +246,9 @@ void SRTInput::handle_connections() {
     // Add to poll list
     m_poll_sockets.push_back(client_sock);
     
-    // For multi mode, map to appropriate output
     if (m_mode == Mode::MULTI) {
-        std::shared_ptr<RistOutput> output = nullptr;
-        
-        // Find the output for this IP
-        auto it = m_ip_to_output.find(client_ip);
-        if (it != m_ip_to_output.end()) {
-            output = it->second;
-        } else {
-            // If no exact match, use the first output
-            if (!m_outputs.empty()) {
-                output = m_outputs[0];
-            }
-        }
-        
-        if (output) {
-            m_socket_to_output[client_sock] = output;
-        } else {
-            std::cerr << "No output found for client IP " << client_ip << std::endl;
-            srt_close(client_sock);
-            // Remove from poll list
-            auto it = std::find(m_poll_sockets.begin(), m_poll_sockets.end(), client_sock);
-            if (it != m_poll_sockets.end()) {
-                m_poll_sockets.erase(it);
-            }
+        if (m_active_output) {
+            m_socket_to_output[client_sock] = m_active_output;
         }
     }
 }
@@ -291,9 +280,15 @@ void SRTInput::process_socket(SRTSOCKET s, std::shared_ptr<RistOutput> output) {
         return;
     }
     
-    if (ret > 0 && output) {
-        // Forward data to RIST output
-        output->send_data(buffer.data(), ret);
+    if (ret > 0) {
+        std::shared_ptr<RistOutput> out = output;
+        if (m_mode == Mode::MULTI && m_active_output) {
+            out = m_active_output;
+            m_socket_to_output[s] = m_active_output;
+        }
+        if (out) {
+            out->send_data(buffer.data(), ret);
+        }
     }
 }
 

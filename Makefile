@@ -13,7 +13,7 @@ define Package/$(PKG_NAME)
   SECTION:=net
   CATEGORY:=Network
   TITLE:=SRT to RIST gateway
-  DEPENDS:=+libstdcpp +librist +srt +ffmpeg +libopenssl +libpthread
+  DEPENDS:=+libstdcpp +librist +srt +ffmpeg +libopenssl +libpthread +spdlog
   URL:=https://github.com/yourusername/srt-to-rist-gateway
   MAINTAINER:=Your Name <your.email@example.com>
 endef

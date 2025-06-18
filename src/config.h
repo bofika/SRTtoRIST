@@ -45,6 +45,12 @@ struct Config {
     
     // Multi-route settings
     std::vector<MultiRouteConfig> multi_routes;
+
+    struct PathSwitch {
+        bool enable = false;
+        float max_packet_loss = 0.0f;
+        uint32_t max_rtt_ms = 0;
+    } path_switch;
 };
 
 #endif // CONFIG_H

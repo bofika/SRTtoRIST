@@ -10,12 +10,14 @@ pkg_check_modules(SRT REQUIRED srt)
 pkg_check_modules(AVFORMAT REQUIRED libavformat)
 pkg_check_modules(AVCODEC REQUIRED libavcodec)
 pkg_check_modules(AVUTIL REQUIRED libavutil)
+pkg_check_modules(SPDLOG REQUIRED spdlog)
 
 include_directories(
     ${SRT_INCLUDE_DIRS}
     ${AVFORMAT_INCLUDE_DIRS}
     ${AVCODEC_INCLUDE_DIRS}
     ${AVUTIL_INCLUDE_DIRS}
+    ${SPDLOG_INCLUDE_DIRS}
 )
 
 include_directories(${CMAKE_SOURCE_DIR}/third_party)
@@ -43,6 +45,7 @@ target_link_libraries(srt_to_rist_gateway
     ${AVFORMAT_LIBRARIES}
     ${AVCODEC_LIBRARIES}
     ${AVUTIL_LIBRARIES}
+    ${SPDLOG_LIBRARIES}
     pthread
 )
 

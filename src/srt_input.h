@@ -19,6 +19,9 @@ public:
     
     // Add a binding for multi-interface mode
     void add_binding(const std::string& interface_ip, std::shared_ptr<RistOutput> output);
+
+    // Set active RIST output (multi mode)
+    void set_active_output(std::shared_ptr<RistOutput> output);
     
     // Virtual functions from InputBase
     bool start() override;
@@ -71,6 +74,7 @@ private:
     // Multi-interface mode mappings
     std::map<std::string, std::shared_ptr<RistOutput>> m_ip_to_output;
     std::map<SRTSOCKET, std::shared_ptr<RistOutput>> m_socket_to_output;
+    std::shared_ptr<RistOutput> m_active_output;
     
     bool m_initialized = false;
     bool m_running = false;

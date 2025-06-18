@@ -23,6 +23,14 @@ public:
     
     // Set feedback callback
     void set_feedback_callback(std::shared_ptr<Feedback> feedback);
+
+    struct Stats {
+        uint32_t bitrate_avg = 0;
+        float packet_loss = 0.0f;
+        uint32_t rtt = 0;
+    };
+
+    Stats get_stats() const;
     
 private:
     // RIST stats callback
@@ -40,6 +48,8 @@ private:
     std::shared_ptr<Feedback> m_feedback;
     std::thread m_event_thread;
     std::atomic<bool> m_running{false};
+
+    Stats m_stats;
     
     // Mutex for thread safety
     std::mutex m_mutex;

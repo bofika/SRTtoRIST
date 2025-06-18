@@ -4,6 +4,10 @@
 #include <memory>
 #include <signal.h>
 #include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/rotating_file_sink.h>
+#include <chrono>
+#include <thread>
 
 #include "config.h"
 #include "srt_input.h"
@@ -18,7 +22,7 @@ using json = nlohmann::json;
 volatile sig_atomic_t running = 1;
 
 void signal_handler(int signal) {
-    std::cout << "Caught signal " << signal << ", shutting down..." << std::endl;
+    spdlog::info("Caught signal {}, shutting down...", signal);
     running = 0;
 }
 
@@ -80,6 +84,13 @@ Config parse_config(const std::string& config_path) {
         
         config.min_bitrate = j.at("min_bitrate");
         config.max_bitrate = j.at("max_bitrate");
+
+        if (j.contains("path_switch")) {
+            auto ps = j["path_switch"];
+            config.path_switch.enable = ps.value("enable", false);
+            config.path_switch.max_packet_loss = ps.value("max_packet_loss", 0.0);
+            config.path_switch.max_rtt_ms = ps.value("max_rtt_ms", 0u);
+        }
         
     } catch (json::exception& e) {
         throw std::runtime_error("JSON parsing error: " + std::string(e.what()));
@@ -90,9 +101,13 @@ Config parse_config(const std::string& config_path) {
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <config.json>" << std::endl;
+        spdlog::error("Usage: {} <config.json>", argv[0]);
         return 1;
     }
+
+    auto logger = spdlog::rotating_logger_mt("srttorist", "/var/log/srttorist.log", 1024 * 1024, 3);
+    spdlog::set_default_logger(logger);
+    spdlog::set_pattern("%Y-%m-%d %H:%M:%S %^%l%$ %v");
     
     // Register signal handlers
     signal(SIGINT, signal_handler);
@@ -124,8 +139,7 @@ int main(int argc, char* argv[]) {
                         if (route.interface_ip == "auto") {
                             if (ip_index < wan_ips.size()) {
                                 route.interface_ip = wan_ips[ip_index++];
-                                std::cout << "Assigned WAN IP " << route.interface_ip 
-                                          << " to route " << ip_index << std::endl;
+                                spdlog::info("Assigned WAN IP {} to route {}", route.interface_ip, ip_index);
                             } else {
                                 throw std::runtime_error("Not enough WAN interfaces for configured routes");
                             }
@@ -137,6 +151,7 @@ int main(int argc, char* argv[]) {
                 for (const auto& route : config.multi_routes) {
                     auto rist = std::make_shared<RistOutput>(route.rist_dst, route.rist_port);
                     rist->set_feedback_callback(feedback);
+                    rist->init();
                     outputs.push_back(rist);
                 }
                 
@@ -151,6 +166,7 @@ int main(int argc, char* argv[]) {
                 // Create SRT caller input
                 auto rist = std::make_shared<RistOutput>(config.rist_dst, config.rist_port);
                 rist->set_feedback_callback(feedback);
+                rist->init();
                 outputs.push_back(rist);
                 input = std::make_unique<SRTInput>(config.input_url, outputs[0]);
                 
@@ -158,6 +174,7 @@ int main(int argc, char* argv[]) {
                 // Create SRT listener input
                 auto rist = std::make_shared<RistOutput>(config.rist_dst, config.rist_port);
                 rist->set_feedback_callback(feedback);
+                rist->init();
                 outputs.push_back(rist);
                 input = std::make_unique<SRTInput>(config.listen_port, outputs[0]);
             }
@@ -165,6 +182,7 @@ int main(int argc, char* argv[]) {
             // Create RTSP input
             auto rist = std::make_shared<RistOutput>(config.rist_dst, config.rist_port);
             rist->set_feedback_callback(feedback);
+            rist->init();
             outputs.push_back(rist);
             input = std::make_unique<RTSPInput>(config.input_url, outputs[0]);
         }
@@ -173,15 +191,49 @@ int main(int argc, char* argv[]) {
             throw std::runtime_error("Failed to initialize input or output");
         }
         
-        std::cout << "Stream relay initialized successfully" << std::endl;
+        spdlog::info("Stream relay initialized successfully");
         
         // Start the stream relay
         input->start();
-        
+
+        size_t active_index = 0;
+        if (config.srt_mode == SRTMode::MULTI && !outputs.empty()) {
+            dynamic_cast<SRTInput*>(input.get())->set_active_output(outputs[0]);
+        }
+
+        auto last_check = std::chrono::steady_clock::now();
+
         // Main loop
         while (running) {
             input->process();
-            
+
+            if (config.srt_mode == SRTMode::MULTI && config.path_switch.enable) {
+                auto now = std::chrono::steady_clock::now();
+                if (now - last_check >= std::chrono::seconds(1)) {
+                    last_check = now;
+                    size_t best = active_index;
+                    float best_loss = outputs[active_index]->get_stats().packet_loss;
+                    uint32_t best_rtt = outputs[active_index]->get_stats().rtt;
+                    for (size_t i = 0; i < outputs.size(); ++i) {
+                        auto st = outputs[i]->get_stats();
+                        if (st.packet_loss <= config.path_switch.max_packet_loss && st.rtt <= config.path_switch.max_rtt_ms) {
+                            best = i;
+                            break;
+                        }
+                        if (st.packet_loss < best_loss) {
+                            best = i;
+                            best_loss = st.packet_loss;
+                            best_rtt = st.rtt;
+                        }
+                    }
+                    if (best != active_index) {
+                        active_index = best;
+                        dynamic_cast<SRTInput*>(input.get())->set_active_output(outputs[active_index]);
+                        spdlog::info("Switched RIST peer to index {}", active_index);
+                    }
+                }
+            }
+
             // Sleep to avoid busy waiting
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
@@ -190,10 +242,10 @@ int main(int argc, char* argv[]) {
         input->stop();
         
     } catch (std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+        spdlog::error("Error: {}", e.what());
         return 1;
     }
     
-    std::cout << "Stream relay terminated" << std::endl;
+    spdlog::info("Stream relay terminated");
     return 0;
 }

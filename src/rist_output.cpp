@@ -1,6 +1,7 @@
 #include "rist_output.h"
 #include "feedback.h"
 #include <iostream>
+#include <cstring>
 
 RistOutput::RistOutput(const std::string& dst_ip, int dst_port)
     : m_dst_ip(dst_ip), m_dst_port(dst_port) {
@@ -101,6 +102,10 @@ void RistOutput::set_feedback_callback(std::shared_ptr<Feedback> feedback) {
     m_feedback = feedback;
 }
 
+RistOutput::Stats RistOutput::get_stats() const {
+    return m_stats;
+}
+
 int RistOutput::stats_callback(void* arg, const struct rist_stats *stats) {
     RistOutput* output = static_cast<RistOutput*>(arg);
     if (!output || !output->m_feedback) {
@@ -110,12 +115,14 @@ int RistOutput::stats_callback(void* arg, const struct rist_stats *stats) {
     // Process stats based on type
     switch (stats->stats_type) {
         case RIST_STATS_SENDER_PEER: {
-            // Extract relevant stats
             uint32_t bitrate_avg = stats->stats.sender_peer.bitrate_avg;
             float packet_loss = stats->stats.sender_peer.quality;
             uint32_t rtt = stats->stats.sender_peer.rtt;
-            
-            // Report to feedback
+
+            output->m_stats.bitrate_avg = bitrate_avg;
+            output->m_stats.packet_loss = packet_loss;
+            output->m_stats.rtt = rtt;
+
             output->m_feedback->process_stats(bitrate_avg, packet_loss, rtt);
             break;
         }

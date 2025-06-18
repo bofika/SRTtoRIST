@@ -6,4 +6,9 @@
   "rist_port": 8000,
   "min_bitrate": 1000,
   "max_bitrate": 5000
+  ,"path_switch": {
+    "enable": true,
+    "max_packet_loss": 2.0,
+    "max_rtt_ms": 200
+  }
 }
