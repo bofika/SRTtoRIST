@@ -9,6 +9,7 @@ When building against the OpenWRT SDK make sure the following development packag
 - `libsrt1.5-openssl`
 - `libsrt-openssl-dev`
 - `librist-dev`
+- `spdlog` (OpenWrt package may be named `spdlog` if available)
 - `libavformat-dev`
 - `libavcodec-dev`
 - `libavutil-dev`
@@ -26,8 +27,10 @@ These provide the SRT, RIST and FFmpeg libraries used by the gateway.
    mkdir -p package/libs
    git clone https://github.com/Haivision/srt.git      openwrt-srt
    git clone https://code.videolan.org/rist/librist.git openwrt-librist
+   git clone https://github.com/gabime/spdlog.git       openwrt-spdlog
    cp -r openwrt-srt       package/libs/srt
    cp -r openwrt-librist   package/libs/librist
+   cp -r openwrt-spdlog    package/libs/spdlog
    ```
 
 3. **Update and install feeds** to obtain FFmpeg and other dependencies:
