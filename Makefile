@@ -14,8 +14,8 @@ define Package/$(PKG_NAME)
   CATEGORY:=Network
   TITLE:=SRT to RIST gateway
   DEPENDS:=+libstdcpp +librist +srt +ffmpeg +libopenssl +libpthread
-  URL:=https://github.com/yourusername/srt-to-rist-gateway
-  MAINTAINER:=Your Name <your.email@example.com>
+  URL:=https://github.com/bofika/SRTtoRIST
+  MAINTAINER:=bofika <gergely.both@streamterminal.com>
 endef
 
 define Package/$(PKG_NAME)/description
