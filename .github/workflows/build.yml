@@ -76,13 +76,18 @@ jobs:
           mkdir -p openwrt-sdk/package/{libs,multimedia}
           
           # Clone repositories in parallel
-          git clone --depth=1 --branch v23.05.3 https://github.com/openwrt/packages.git openwrt-packages &
-          git clone --depth=1 --branch v23.05.3 https://github.com/openwrt/openwrt.git openwrt-core &
+          git clone --depth=1 --branch openwrt-23.05 https://github.com/openwrt/packages.git openwrt-packages &
+          git clone --depth=1 --branch openwrt-23.05 https://github.com/openwrt/openwrt.git openwrt-core &
           git clone --depth=1 https://github.com/Haivision/srt.git openwrt-srt &
           git clone --depth=1 https://code.videolan.org/rist/librist.git openwrt-librist &
           git clone --depth=1 https://github.com/gabime/spdlog.git openwrt-spdlog &
           wait
-          
+
+          if [ ! -d openwrt-packages/multimedia/ffmpeg ]; then
+            echo "ffmpeg package directory not found, check the openwrt-packages branch/tag."
+            exit 1
+          fi
+
           cp -r openwrt-core/package/libs/openssl openwrt-sdk/package/libs/libopenssl
           cp -r openwrt-packages/multimedia/ffmpeg openwrt-sdk/package/multimedia/
           cp -r openwrt-srt openwrt-sdk/package/libs/srt
@@ -95,10 +100,10 @@ jobs:
           rm -rf feeds tmp
           
           cat > feeds.conf <<EOF
-          src-git packages https://github.com/openwrt/packages.git;v23.05.3
-          src-git luci https://github.com/openwrt/luci.git;v23.05.3
-          src-git routing https://github.com/openwrt/routing.git;v23.05.3
-          src-git telephony https://github.com/openwrt/telephony.git;v23.05.3
+          src-git packages https://github.com/openwrt/packages.git;openwrt-23.05
+          src-git luci https://github.com/openwrt/luci.git;openwrt-23.05
+          src-git routing https://github.com/openwrt/routing.git;openwrt-23.05
+          src-git telephony https://github.com/openwrt/telephony.git;openwrt-23.05
           EOF
           
           ./scripts/feeds update -a
