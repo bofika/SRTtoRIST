@@ -22,7 +22,6 @@ jobs:
         with:
           path: |
             openwrt-sdk
-            openwrt-packages
             openwrt-core
             openwrt-srt
             openwrt-librist
@@ -76,20 +75,13 @@ jobs:
           mkdir -p openwrt-sdk/package/{libs,multimedia}
           
           # Clone repositories in parallel
-          git clone --depth=1 --branch openwrt-23.05 https://github.com/openwrt/packages.git openwrt-packages &
           git clone --depth=1 --branch openwrt-23.05 https://github.com/openwrt/openwrt.git openwrt-core &
           git clone --depth=1 https://github.com/Haivision/srt.git openwrt-srt &
           git clone --depth=1 https://code.videolan.org/rist/librist.git openwrt-librist &
           git clone --depth=1 https://github.com/gabime/spdlog.git openwrt-spdlog &
           wait
 
-          if [ ! -d openwrt-packages/multimedia/ffmpeg ]; then
-            echo "ffmpeg package directory not found, check the openwrt-packages branch/tag."
-            exit 1
-          fi
-
           cp -r openwrt-core/package/libs/openssl openwrt-sdk/package/libs/libopenssl
-          cp -r openwrt-packages/multimedia/ffmpeg openwrt-sdk/package/multimedia/
           cp -r openwrt-srt openwrt-sdk/package/libs/srt
           cp -r openwrt-librist openwrt-sdk/package/libs/librist
           cp -r openwrt-spdlog openwrt-sdk/package/libs/spdlog
@@ -101,11 +93,11 @@ jobs:
           # missing in the Makefile, such as when the package already disables
           # the engine.
           sed -i '/^OPENSSL_OPTIONS:=/ { /no-devcryptoeng/! s/$/ no-devcryptoeng/ }' \
+            openwrt-sdk/package/libs/libopenssl/Makefile || true
 
           # sed is used here to gracefully handle cases where the patterns
           # may not yet exist in the Makefile.
           sed -i '/^OPENSSL_OPTIONS:=/ s/$/ no-devcryptoeng/' \
-
             openwrt-sdk/package/libs/libopenssl/Makefile || true
           sed -i 's/enable-devcryptoeng/no-devcryptoeng/' \
             openwrt-sdk/package/libs/libopenssl/Makefile || true
