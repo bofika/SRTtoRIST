@@ -94,6 +94,13 @@ jobs:
           cp -r openwrt-librist openwrt-sdk/package/libs/librist
           cp -r openwrt-spdlog openwrt-sdk/package/libs/spdlog
 
+      - name: Disable devcrypto engine in OpenSSL
+        run: |
+          sed -i '/^OPENSSL_OPTIONS:=/ s/$/ no-devcryptoeng/' \
+            openwrt-sdk/package/libs/libopenssl/Makefile
+          sed -i 's/enable-devcryptoeng/no-devcryptoeng/' \
+            openwrt-sdk/package/libs/libopenssl/Makefile
+
       - name: Update and install feeds
         run: |
           cd openwrt-sdk
