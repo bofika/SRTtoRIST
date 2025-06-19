@@ -96,10 +96,16 @@ jobs:
 
       - name: Disable devcrypto engine in OpenSSL
         run: |
+          # sed is used here to gracefully handle cases where the patterns
+          # may not yet exist in the Makefile.
           sed -i '/^OPENSSL_OPTIONS:=/ s/$/ no-devcryptoeng/' \
-            openwrt-sdk/package/libs/libopenssl/Makefile
+            openwrt-sdk/package/libs/libopenssl/Makefile || true
           sed -i 's/enable-devcryptoeng/no-devcryptoeng/' \
-            openwrt-sdk/package/libs/libopenssl/Makefile
+            openwrt-sdk/package/libs/libopenssl/Makefile || true
+          grep -q '^CONFIGURE_ARGS += no-devcryptoeng' \
+            openwrt-sdk/package/libs/libopenssl/Makefile || \
+            echo 'CONFIGURE_ARGS += no-devcryptoeng' >> \
+              openwrt-sdk/package/libs/libopenssl/Makefile
 
       - name: Update and install feeds
         run: |
