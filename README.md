@@ -52,8 +52,13 @@ These provide the SRT, RIST and FFmpeg libraries used by the gateway.
    cp -r /path/to/srt-to-rist-gateway/* package/srt-to-rist-gateway/
    ```
 
-5. **Select the required packages** using `make menuconfig` (or edit `.config` directly). Enable the packages listed above together with `srt-to-rist-gateway`.
-6. **Build the package**:
+5. **Disable the devcrypto engine in OpenSSL** to avoid build failures:
+
+   Add `no-devcryptoeng` to the `OPENSSL_OPTIONS` (or `CONFIGURE_ARGS`) in
+   `package/libs/libopenssl/Makefile` within the SDK.
+
+6. **Select the required packages** using `make menuconfig` (or edit `.config` directly). Enable the packages listed above together with `srt-to-rist-gateway`.
+7. **Build the package**:
 
    ```sh
    make package/srt-to-rist-gateway/compile -j$(nproc)
