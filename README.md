@@ -88,3 +88,9 @@ Refer to the bundled `config.json` for a full example.
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+## Third-party licenses
+
+This project bundles the [nlohmann/json](https://github.com/nlohmann/json)
+library, which is provided under the MIT License. See
+[third_party/nlohmann/LICENSE.MIT](third_party/nlohmann/LICENSE.MIT) for details.
