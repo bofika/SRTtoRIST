@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <cmath>
+#include <cerrno>
 
 Feedback::Feedback(uint32_t min_bitrate, uint32_t max_bitrate,
                    const std::string& ip, int port)
