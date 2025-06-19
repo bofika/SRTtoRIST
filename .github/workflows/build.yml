@@ -159,6 +159,12 @@ jobs:
           
           make defconfig
 
+      - name: Clean OpenWRT build directories
+        run: |
+          rm -rf openwrt-sdk/build_dir
+          rm -rf openwrt-sdk/tmp
+          rm -rf openwrt-sdk/staging_dir
+
       - name: Build package
         run: |
           cd openwrt-sdk

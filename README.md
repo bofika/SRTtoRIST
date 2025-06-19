@@ -58,7 +58,12 @@ These provide the SRT, RIST and FFmpeg libraries used by the gateway.
    `package/libs/libopenssl/Makefile` within the SDK.
 
 6. **Select the required packages** using `make menuconfig` (or edit `.config` directly). Enable the packages listed above together with `srt-to-rist-gateway`.
-7. **Build the package**:
+7. **Clean previous build artifacts** (recommended when rebuilding):
+
+   ```sh
+   rm -rf build_dir tmp staging_dir
+   ```
+8. **Build the package**:
 
    ```sh
    make package/srt-to-rist-gateway/compile -j$(nproc)
